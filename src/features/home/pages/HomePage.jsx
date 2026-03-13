@@ -159,7 +159,7 @@ export function HomePage() {
           action={
             <button
               className="relative flex size-10 items-center justify-center rounded-full bg-surface shadow-card"
-              onClick={() => navigate("/inicio")}
+              onClick={() => navigate("/notificaciones")}
             >
               <span className="material-symbols-outlined text-[1.4rem] text-text-muted">
                 notifications

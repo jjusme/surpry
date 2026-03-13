@@ -1,6 +1,7 @@
 ﻿import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
+import { toast } from "react-hot-toast";
 import { AppShell } from "../../../components/layout/AppShell";
 import { PageHeader } from "../../../components/layout/PageHeader";
 import { Button } from "../../../components/ui/Button";
@@ -25,7 +26,6 @@ export function ShareDetailPage() {
   const { isSupabaseConfigured } = useAuth();
   const [note, setNote] = useState("");
   const [proofFile, setProofFile] = useState(null);
-  const [serverError, setServerError] = useState("");
   const shareQuery = useQuery({
     queryKey: ["share-detail", shareId],
     queryFn: () => getShareDetail(shareId),
@@ -55,15 +55,17 @@ export function ShareDetailPage() {
         queryClient.invalidateQueries({ queryKey: ["share-detail", shareId] }),
         queryClient.invalidateQueries({ queryKey: ["pending-shares"] })
       ]);
+      toast.success("Pago reportado con éxito");
     },
-    onError: (error) => setServerError(error.message)
+    onError: (error) => toast.error(error.message)
   });
   const reviewMutation = useMutation({
     mutationFn: (action) => reviewShare(shareId, action),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["share-detail", shareId] });
+      toast.success("Pago revisado");
     },
-    onError: (error) => setServerError(error.message)
+    onError: (error) => toast.error(error.message)
   });
 
   if (shareQuery.isLoading) {
@@ -116,7 +118,6 @@ export function ShareDetailPage() {
           </div>
           <TextArea rows={3} placeholder="Nota opcional" value={note} onChange={(event) => setNote(event.target.value)} />
           <Input type="file" onChange={(event) => setProofFile(event.target.files?.[0] || null)} />
-          {serverError ? <p className="text-sm font-medium text-danger">{serverError}</p> : null}
           <Button className="w-full" size="lg" onClick={() => reportMutation.mutate()} disabled={reportMutation.isPending}>
             {reportMutation.isPending ? "Enviando..." : "Confirmar transferencia enviada"}
           </Button>

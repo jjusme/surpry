@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "react-hot-toast";
 import { AppShell } from "../../../components/layout/AppShell";
 import { PageHeader } from "../../../components/layout/PageHeader";
 import { Button } from "../../../components/ui/Button";
@@ -35,7 +36,6 @@ const schema = z.object({
 export function PaymentMethodsPage() {
   const queryClient = useQueryClient();
   const { user, isSupabaseConfigured } = useAuth();
-  const [serverError, setServerError] = useState("");
   const [editing, setEditing] = useState(null);
   const listQuery = useQuery({
     queryKey: ["payment-destinations", user?.id],
@@ -92,8 +92,9 @@ export function PaymentMethodsPage() {
         is_default: true
       });
       await queryClient.invalidateQueries({ queryKey: ["payment-destinations", user.id] });
+      toast.success("Método guardado");
     },
-    onError: (error) => setServerError(error.message)
+    onError: (error) => toast.error(error.message)
   });
 
   const deleteMutation = useMutation({
@@ -101,12 +102,12 @@ export function PaymentMethodsPage() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["payment-destinations", user.id] });
       setEditing(null);
+      toast.success("Método eliminado");
     },
-    onError: (error) => setServerError(error.message)
+    onError: (error) => toast.error(error.message)
   });
 
   const onSubmit = handleSubmit(async (values) => {
-    setServerError("");
     await saveMutation.mutateAsync(values);
   });
 
@@ -172,7 +173,6 @@ export function PaymentMethodsPage() {
               <input type="checkbox" className="size-4" onChange={(event) => setValue("is_default", event.target.checked)} />
               Usar como metodo por defecto
             </label>
-            {serverError ? <p className="text-sm font-medium text-danger">{serverError}</p> : null}
             <Button type="submit" className="w-full" size="lg" disabled={isSubmitting || saveMutation.isPending}>
               {saveMutation.isPending ? "Guardando..." : editing ? "Actualizar metodo" : "Guardar metodo"}
             </Button>

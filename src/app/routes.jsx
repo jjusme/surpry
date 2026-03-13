@@ -30,6 +30,7 @@ const PaymentMethodsPage = lazyPage(() => import("../features/profile/pages/Paym
 const ProfilePage = lazyPage(() => import("../features/profile/pages/ProfilePage"), "ProfilePage");
 const ShareDetailPage = lazyPage(() => import("../features/reimbursements/pages/ShareDetailPage"), "ShareDetailPage");
 const WishlistPage = lazyPage(() => import("../features/wishlist/pages/WishlistPage"), "WishlistPage");
+const NotificationsPage = lazyPage(() => import("../features/notifications/pages/NotificationsPage"), "NotificationsPage");
 
 export const router = createBrowserRouter([
   {
@@ -59,6 +60,7 @@ export const router = createBrowserRouter([
       { path: "/setup", element: withSuspense(<ProfileSetupPage />) },
       { path: "/onboarding", element: <Navigate to="/setup" replace /> },
       { path: "/inicio", element: withSuspense(<HomePage />) },
+      { path: "/notificaciones", element: withSuspense(<NotificationsPage />) },
       { path: "/grupos", element: withSuspense(<GroupsListPage />) },
       { path: "/grupos/:groupId", element: withSuspense(<GroupDetailPage />) },
       { path: "/eventos", element: withSuspense(<EventsListPage />) },

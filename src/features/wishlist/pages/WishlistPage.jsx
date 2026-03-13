@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "react-hot-toast";
 import { AppShell } from "../../../components/layout/AppShell";
 import { PageHeader } from "../../../components/layout/PageHeader";
 import { Button } from "../../../components/ui/Button";
@@ -30,7 +31,6 @@ export function WishlistPage() {
   const queryClient = useQueryClient();
   const { user, isSupabaseConfigured } = useAuth();
   const [editing, setEditing] = useState(null);
-  const [serverError, setServerError] = useState("");
   const listQuery = useQuery({
     queryKey: ["wishlist", user?.id],
     queryFn: () => listMyWishlist(user.id),
@@ -71,9 +71,10 @@ export function WishlistPage() {
     onSuccess: async () => {
       setEditing(null);
       reset({ id: "", title: "", url: "", notes: "", price_estimate: "", priority: "media" });
+      toast.success("Regalo guardado");
       await queryClient.invalidateQueries({ queryKey: ["wishlist", user.id] });
     },
-    onError: (error) => setServerError(error.message)
+    onError: (error) => toast.error(error.message)
   });
 
   const deleteMutation = useMutation({
@@ -81,12 +82,12 @@ export function WishlistPage() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["wishlist", user.id] });
       setEditing(null);
+      toast.success("Regalo eliminado");
     },
-    onError: (error) => setServerError(error.message)
+    onError: (error) => toast.error(error.message)
   });
 
   const onSubmit = handleSubmit(async (values) => {
-    setServerError("");
     await saveMutation.mutateAsync(values);
   });
 
@@ -155,7 +156,6 @@ export function WishlistPage() {
             <FormField label="Nota">
               <TextArea rows={3} placeholder="Alguna pista util" {...register("notes")} />
             </FormField>
-            {serverError ? <p className="text-sm font-medium text-danger">{serverError}</p> : null}
             <Button type="submit" size="lg" className="w-full" disabled={isSubmitting || saveMutation.isPending}>
               {saveMutation.isPending ? "Guardando..." : editing ? "Actualizar item" : "Agregar item"}
             </Button>

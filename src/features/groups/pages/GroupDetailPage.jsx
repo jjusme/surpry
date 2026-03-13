@@ -1,6 +1,7 @@
 ﻿import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "react-hot-toast";
 import { AppShell } from "../../../components/layout/AppShell";
 import { PageHeader } from "../../../components/layout/PageHeader";
 import { Card } from "../../../components/ui/Card";
@@ -22,7 +23,6 @@ export function GroupDetailPage() {
   const [selectedBirthdayUser, setSelectedBirthdayUser] = useState("");
   const [inviteUrl, setInviteUrl] = useState("");
   const [copySuccess, setCopySuccess] = useState(false);
-  const [serverError, setServerError] = useState("");
 
   const detailQuery = useQuery({
     queryKey: ["group-detail", groupId],
@@ -32,8 +32,11 @@ export function GroupDetailPage() {
 
   const inviteMutation = useMutation({
     mutationFn: () => createGroupInvite(groupId, user.id),
-    onSuccess: (invite) => setInviteUrl(`${window.location.origin}/join/${invite.token}`),
-    onError: (error) => setServerError(error.message)
+    onSuccess: (invite) => {
+      setInviteUrl(`${window.location.origin}/join/${invite.token}`);
+      toast.success("Link generado");
+    },
+    onError: (error) => toast.error(error.message)
   });
 
   const eventMutation = useMutation({
@@ -44,8 +47,9 @@ export function GroupDetailPage() {
         queryClient.invalidateQueries({ queryKey: ["group-detail", groupId] }),
         queryClient.invalidateQueries({ queryKey: ["events", user.id] })
       ]);
+      toast.success("Plan sorpresa iniciado");
     },
-    onError: (error) => setServerError(error.message)
+    onError: (error) => toast.error(error.message)
   });
 
   const handleCopyInvite = async () => {
@@ -175,9 +179,6 @@ export function GroupDetailPage() {
                       </option>
                     ))}
                 </Select>
-                {serverError && (
-                  <p className="text-sm font-medium text-danger bg-danger/5 p-3 rounded-xl border border-danger/20">{serverError}</p>
-                )}
                 <Button
                   size="pill"
                   className="w-full h-12 text-base font-bold"

@@ -1,6 +1,7 @@
 ﻿import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "react-hot-toast";
 import { AppShell } from "../../../components/layout/AppShell";
 import { PageHeader } from "../../../components/layout/PageHeader";
 import { Card } from "../../../components/ui/Card";
@@ -26,7 +27,6 @@ export function GroupsListPage() {
   const { user, isSupabaseConfigured } = useAuth();
   const [name, setName] = useState("");
   const [showCreate, setShowCreate] = useState(false);
-  const [serverError, setServerError] = useState("");
 
   const listQuery = useQuery({
     queryKey: ["groups", user?.id],
@@ -38,18 +38,20 @@ export function GroupsListPage() {
     onSuccess: async () => {
       setName("");
       setShowCreate(false);
+      toast.success("Grupo creado");
       await queryClient.invalidateQueries({ queryKey: ["groups", user.id] });
     },
-    onError: (error) => setServerError(error.message)
+    onError: (error) => toast.error(
+      error.message.includes("row-level security policy") ? "Error de permisos. Corre el SQL 0003." : error.message
+    )
   });
 
   const handleCreate = async (event) => {
     event.preventDefault();
     if (!name.trim()) {
-      setServerError("Ingresa un nombre para el grupo.");
+      toast.error("Ingresa un nombre para el grupo.");
       return;
     }
-    setServerError("");
     await createMutation.mutateAsync({ name: name.trim() });
   };
 
@@ -177,7 +179,7 @@ export function GroupsListPage() {
               <h2 className="text-xl font-bold text-text">Crear grupo</h2>
               <button
                 type="button"
-                onClick={() => { setShowCreate(false); setServerError(""); }}
+                onClick={() => { setShowCreate(false); }}
                 className="flex size-10 items-center justify-center rounded-full bg-surface-muted text-text-muted hover:text-text transition-colors"
               >
                 <span className="material-symbols-outlined text-[1.25rem]">close</span>
@@ -187,12 +189,7 @@ export function GroupsListPage() {
               Crea un grupo para familia, amigos o trabajo y comparte un link de invitación para empezar a planear.
             </p>
             <form className="space-y-6" onSubmit={handleCreate}>
-              <FormField
-                label="Nombre del grupo"
-                error={serverError.includes("row-level security policy")
-                  ? "Error de permisos. Corre el SQL 0003 en Supabase para arreglarlo."
-                  : serverError}
-              >
+              <FormField label="Nombre del grupo">
                 <Input
                   placeholder="Ej. Amigos de la uni"
                   value={name}

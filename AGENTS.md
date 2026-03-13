@@ -51,8 +51,8 @@ Vercel
 - `PageHeader` — sticky header; props: title, subtitle, backTo, action (right slot)
 
 ## Current build phase
-Phase 2–4: auth, groups, wishlist, events, expenses, reimbursements — core functional.
-Phase 5+: notifications, PWA, performance, and event auto-creation cron job still pending.
+Phase 1–7: Auth, profiles, groups, wishlist, secret events, expenses, reimbursements, and cron-job auto-creation are implemented and core functional.
+Phase 8+: Notifications UI, PWA configuration, Realtime subscriptions, and performance polish are still pending.
 
 ## Done means
 - Code runs locally.

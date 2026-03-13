@@ -1,5 +1,6 @@
-﻿import { useMemo, useState } from "react";
+﻿import { useMemo, useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
+import { toast } from "react-hot-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "../../../components/layout/AppShell";
 import { PageHeader } from "../../../components/layout/PageHeader";
@@ -17,6 +18,7 @@ import { LoadingState } from "../../../components/feedback/LoadingState";
 import { ErrorState } from "../../../components/feedback/ErrorState";
 import { EmptyState } from "../../../components/feedback/EmptyState";
 import { useAuth } from "../../auth/AuthContext";
+import { requireSupabase } from "../../../lib/supabase";
 import {
   addGiftOption,
   createExpenseWithShares,
@@ -48,7 +50,6 @@ export function EventDetailPage() {
   const [expenseForm, setExpenseForm] = useState(initialExpenseForm);
   const [selectedParticipants, setSelectedParticipants] = useState([]);
   const [receiptFile, setReceiptFile] = useState(null);
-  const [serverError, setServerError] = useState("");
 
   const detailQuery = useQuery({
     queryKey: ["event-detail", eventId],
@@ -61,20 +62,48 @@ export function EventDetailPage() {
     enabled: Boolean(user?.id && isSupabaseConfigured)
   });
 
+  useEffect(() => {
+    if (!eventId || !isSupabaseConfigured) return;
+
+    const supabase = requireSupabase();
+    const channel = supabase
+      .channel(`event_${eventId}_activity`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'events', filter: `id=eq.${eventId}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ["event-detail", eventId] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'gift_options', filter: `event_id=eq.${eventId}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ["event-detail", eventId] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses', filter: `event_id=eq.${eventId}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ["event-detail", eventId] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'expense_shares' }, () => {
+        queryClient.invalidateQueries({ queryKey: ["event-detail", eventId] });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [eventId, isSupabaseConfigured, queryClient]);
+
   const giftMutation = useMutation({
     mutationFn: (values) => addGiftOption(eventId, values),
     onSuccess: async () => {
       setGiftForm(initialGiftForm);
+      toast.success("Regalo propuesto exitosamente");
       await queryClient.invalidateQueries({ queryKey: ["event-detail", eventId] });
     },
-    onError: (error) => setServerError(error.message)
+    onError: (error) => toast.error(error.message)
   });
 
   const giftStatusMutation = useMutation({
     mutationFn: ({ giftId, status }) => updateGiftStatus(eventId, giftId, status, user.id),
-    onSuccess: async () =>
-      queryClient.invalidateQueries({ queryKey: ["event-detail", eventId] }),
-    onError: (error) => setServerError(error.message)
+    onSuccess: async () => {
+      toast.success("Estado del regalo actualizado");
+      queryClient.invalidateQueries({ queryKey: ["event-detail", eventId] })
+    },
+    onError: (error) => toast.error(error.message)
   });
 
   const expenseMutation = useMutation({
@@ -98,16 +127,19 @@ export function EventDetailPage() {
       setExpenseForm(initialExpenseForm);
       setReceiptFile(null);
       setSelectedParticipants([]);
+      toast.success("Gasto registrado y dividido");
       await queryClient.invalidateQueries({ queryKey: ["event-detail", eventId] });
     },
-    onError: (error) => setServerError(error.message)
+    onError: (error) => toast.error(error.message)
   });
 
   const reviewMutation = useMutation({
     mutationFn: ({ shareId, action }) => reviewShare(shareId, action),
-    onSuccess: async () =>
-      queryClient.invalidateQueries({ queryKey: ["event-detail", eventId] }),
-    onError: (error) => setServerError(error.message)
+    onSuccess: async () => {
+      toast.success("Revisión confirmada");
+      queryClient.invalidateQueries({ queryKey: ["event-detail", eventId] });
+    },
+    onError: (error) => toast.error(error.message)
   });
 
   const participants = detailQuery.data?.participants || [];
@@ -147,15 +179,13 @@ export function EventDetailPage() {
 
   const submitGift = async (e) => {
     e.preventDefault();
-    setServerError("");
     await giftMutation.mutateAsync({ ...giftForm, proposed_by: user.id });
   };
 
   const submitExpense = async (e) => {
     e.preventDefault();
-    setServerError("");
     if (selectedParticipants.length === 0) {
-      setServerError("Selecciona al menos un cómplice para dividir el gasto.");
+      toast.error("Selecciona al menos un cómplice para dividir el gasto.");
       return;
     }
     await expenseMutation.mutateAsync({ ...expenseForm, participant_ids: selectedParticipants });
@@ -250,12 +280,6 @@ export function EventDetailPage() {
             ))}
           </div>
         </div>
-
-        {serverError && (
-          <p className="rounded-2xl bg-danger/10 px-4 py-3 text-sm font-medium text-danger border border-danger/20">
-            {serverError}
-          </p>
-        )}
 
         {/* RESUMEN */}
         {activeTab === "resumen" && (
@@ -555,7 +579,7 @@ export function EventDetailPage() {
               {expenses.length === 0 ? (
                 <div className="rounded-[2rem] bg-surface/30 border border-dashed border-border p-8 text-center space-y-2">
                   <span className="material-symbols-outlined text-text-muted/20 text-4xl">payments</span>
-                  <p className="text-sm font-medium text-text-muted font-medium italic">Todavía no hay gastos registrados.</p>
+                  <p className="text-sm font-medium text-text-muted italic">Todavía no hay gastos registrados.</p>
                 </div>
               ) : (
                 expenses.map((expense) => (
@@ -603,7 +627,7 @@ export function EventDetailPage() {
         {activeTab === "pagos" && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-400">
             <Card className="space-y-5 p-5 shadow-sm">
-              <h3 className="text-lg font-black text-text tracking-tight uppercase tracking-tight">Tus cuentas pendientes</h3>
+              <h3 className="text-lg font-black text-text tracking-tight uppercass">Tus cuentas pendientes</h3>
               {myShares.length === 0 ? (
                 <div className="py-4 text-center">
                   <span className="material-symbols-outlined text-success opacity-20 text-4xl mb-2">verified</span>
