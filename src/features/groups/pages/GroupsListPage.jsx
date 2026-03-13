@@ -116,7 +116,7 @@ export function GroupsListPage() {
                       <div>
                         <p className="text-lg font-bold text-text">{group.name}</p>
                         <p className="text-sm text-text-muted">
-                          {members.length} miembro{members.length !== 1 ? "s" : ""}
+                          {members.length} cómplice{members.length !== 1 ? "s" : ""}
                         </p>
                       </div>
                       {group.membership_role === "admin" && (
@@ -143,7 +143,7 @@ export function GroupsListPage() {
                           className="ml-auto text-xs font-bold text-primary"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          Planear
+                          Sorprender
                         </Link>
                       </div>
                     )}
@@ -208,7 +208,7 @@ export function GroupsListPage() {
                 className="w-full"
                 disabled={!isSupabaseConfigured || createMutation.isPending}
               >
-                {createMutation.isPending ? "Creando misión..." : "Crear grupo"}
+                {createMutation.isPending ? "Creando grupo..." : "Crear grupo"}
               </Button>
             </form>
           </div>

@@ -1,4 +1,5 @@
-﻿import { Link, useNavigate } from "react-router-dom";
+﻿import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "../../../components/layout/AppShell";
 import { PageHeader } from "../../../components/layout/PageHeader";
@@ -11,11 +12,12 @@ import { Avatar } from "../../../components/ui/Avatar";
 import { LoadingState } from "../../../components/feedback/LoadingState";
 import { ErrorState } from "../../../components/feedback/ErrorState";
 import { EmptyState } from "../../../components/feedback/EmptyState";
+import { WelcomeWizard } from "../../../components/ui/WelcomeWizard";
 import { useAuth } from "../../auth/AuthContext";
 import { listGroups } from "../../groups/service";
 import { listEvents } from "../../events/service";
 import { requireSupabase } from "../../../lib/supabase";
-import { formatDate, formatCurrency, formatBirthday } from "../../../utils/format";
+import { formatDate, formatCurrency } from "../../../utils/format";
 
 async function getPendingShares(userId) {
   const supabase = requireSupabase();
@@ -43,7 +45,6 @@ async function getNotifications(userId) {
   return data ?? [];
 }
 
-/** Computes how many days from today to a day/month birthday */
 function daysUntilBirthday(day, month) {
   if (!day || !month) return null;
   const today = new Date();
@@ -57,6 +58,7 @@ export function HomePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, isSupabaseConfigured } = useAuth();
+  const [showWelcome, setShowWelcome] = useState(false);
 
   const groupsQuery = useQuery({
     queryKey: ["groups", user?.id],
@@ -78,6 +80,7 @@ export function HomePage() {
     queryFn: () => getNotifications(user.id),
     enabled: Boolean(user?.id && isSupabaseConfigured)
   });
+
   const markReadMutation = useMutation({
     mutationFn: async (id) => {
       const supabase = requireSupabase();
@@ -90,13 +93,25 @@ export function HomePage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications", user.id] })
   });
 
+  useEffect(() => {
+    const hasSeenWelcome = localStorage.getItem("has_seen_welcome_v1");
+    if (!hasSeenWelcome && groupsQuery.isSuccess && groupsQuery.data.length === 0) {
+      setShowWelcome(true);
+    }
+  }, [groupsQuery.isSuccess, groupsQuery.data]);
+
+  const handleWelcomeComplete = () => {
+    localStorage.setItem("has_seen_welcome_v1", "true");
+    setShowWelcome(false);
+  };
+
   const isLoading =
     groupsQuery.isLoading ||
     eventsQuery.isLoading ||
     sharesQuery.isLoading ||
     notificationsQuery.isLoading;
 
-  if (isLoading) return <LoadingState message="Cargando tu tablero..." fullScreen />;
+  if (isLoading) return <LoadingState message="Preparando tu tablero..." fullScreen />;
 
   const anyError =
     groupsQuery.error || eventsQuery.error || sharesQuery.error || notificationsQuery.error;
@@ -117,7 +132,6 @@ export function HomePage() {
     );
   }
 
-  // Build upcoming birthdays list from group members
   const allMembers = (groupsQuery.data || []).flatMap((g) =>
     (g.members || []).filter(
       (m) => m.user_id !== user.id && m.profiles?.birthday_day
@@ -134,7 +148,6 @@ export function HomePage() {
   const firstName = user?.user_metadata?.display_name?.split(" ")[0] || "tú";
   const hour = new Date().getHours();
   const greeting = hour < 13 ? "Buenos días" : hour < 19 ? "Buenas tardes" : "Buenas noches";
-
   const unreadCount = notificationsQuery.data?.length || 0;
 
   return (
@@ -159,61 +172,44 @@ export function HomePage() {
         />
       }
     >
-      <div className="space-y-5 pt-4">
+      {showWelcome && <WelcomeWizard onComplete={handleWelcomeComplete} />}
+
+      <div className="space-y-6 pt-4 pb-12">
         {/* Pending payment banner */}
         {sharesQuery.data.length > 0 && (
-          <div className="flex items-center gap-4 rounded-3xl bg-primary/12 px-4 py-4">
+          <div className="flex items-center gap-4 rounded-3xl bg-primary/12 px-4 py-4 border border-primary/20">
             <div className="flex size-12 flex-shrink-0 items-center justify-center rounded-2xl bg-primary/20">
-              <span
-                className="material-symbols-outlined text-[1.4rem] text-primary"
-                style={{ fontVariationSettings: "'FILL' 1" }}
-              >
+              <span className="material-symbols-outlined text-[1.4rem] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>
                 payments
               </span>
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-bold text-text">Pago pendiente</p>
-              <p className="truncate text-sm text-text-muted">
-                Debes{" "}
-                {formatCurrency(
-                  sharesQuery.data.reduce((acc, s) => acc + Number(s.amount_due || 0), 0)
-                )}{" "}
-                en {sharesQuery.data.length} pendiente(s)
+              <p className="text-sm font-bold text-text">Saldos pendientes</p>
+              <p className="truncate text-sm text-text-muted font-medium">
+                Debes {formatCurrency(sharesQuery.data.reduce((acc, s) => acc + Number(s.amount_due || 0), 0))} en {sharesQuery.data.length} planes.
               </p>
             </div>
-            <Button
-              size="md"
-              onClick={() => navigate(`/shares/${sharesQuery.data[0].id}`)}
-            >
-              Ver
-            </Button>
+            <Button size="md" onClick={() => navigate(`/shares/${sharesQuery.data[0].id}`)}>Ver</Button>
           </div>
         )}
 
-        {/* Upcoming birthdays horizontal scroll */}
+        {/* Upcoming birthdays */}
         {upcomingBirthdays.length > 0 && (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-text">Próximos cumpleaños</h2>
-              <Link className="text-sm font-semibold text-primary" to="/grupos">
-                Ver todos
-              </Link>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between px-1">
+              <h2 className="text-lg font-black tracking-tight text-text">Próximos cumpleañeros</h2>
+              <Link className="text-xs font-bold text-primary uppercase tracking-wider" to="/grupos">Ver todos</Link>
             </div>
-            <div className="flex gap-4 overflow-x-auto pb-2" style={{ scrollbarWidth: "none" }}>
+            <div className="flex gap-4 overflow-x-auto pb-4 -mx-1 px-1 no-scrollbar">
               {upcomingBirthdays.map((member, i) => (
                 <div key={i} className="flex flex-shrink-0 flex-col items-center gap-2">
-                  <div className="relative">
-                    <Avatar
-                      name={member.display_name}
-                      url={member.avatar_url}
-                      className="size-16 text-base"
-                      ring
-                    />
-                    <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full bg-primary px-2 py-0.5 text-[10px] font-black text-slate-950 shadow-float">
+                  <div className="relative group active:scale-95 transition-transform">
+                    <Avatar name={member.display_name} url={member.avatar_url} className="size-16 ring-4 ring-bg" ring />
+                    <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full bg-primary px-2 py-0.5 text-[10px] font-black text-slate-950 shadow-float ring-2 ring-bg">
                       {member.days}d
                     </span>
                   </div>
-                  <p className="max-w-[4rem] truncate text-center text-[11px] font-semibold text-text">
+                  <p className="max-w-[4.5rem] truncate text-center text-[11px] font-bold text-text">
                     {member.display_name?.split(" ")[0]}
                   </p>
                 </div>
@@ -223,77 +219,55 @@ export function HomePage() {
         )}
 
         {/* Active events */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-text">Eventos activos</h2>
-            <Link className="text-sm font-semibold text-primary" to="/eventos">
-              Ver todos
-            </Link>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between px-1">
+            <h2 className="text-lg font-black tracking-tight text-text">Planes activos</h2>
+            <Link className="text-xs font-bold text-primary uppercase tracking-wider" to="/eventos">Ver todos</Link>
           </div>
           {eventsQuery.data.length === 0 ? (
-            <EmptyState
-              icon="celebration"
-              title="Sin eventos activos"
-              description="Todavía no participas en ningún evento secreto."
-            />
+            <div className="rounded-[2rem] bg-surface-muted/30 border border-dashed border-border p-8 text-center space-y-3">
+              <span className="material-symbols-outlined text-text-muted/20 text-5xl">auto_awesome</span>
+              <p className="text-sm text-text-muted font-medium italic">
+                \"¿Shhh... todavía no hay sorpresas en camino?\"
+              </p>
+              <Button variant="secondary" size="md" onClick={() => navigate("/grupos")}>Crear grupo</Button>
+            </div>
           ) : (
             eventsQuery.data.slice(0, 3).map((event) => {
-              const totalExpenses = (event.expenses || []).reduce(
-                (acc, e) => acc + Number(e.amount || 0),
-                0
-              );
+              const totalExpenses = (event.expenses || []).reduce((acc, e) => acc + Number(e.amount || 0), 0);
               const priceEstimate = event.gift_options?.[0]?.price_estimate || 0;
-              const progress =
-                priceEstimate > 0
-                  ? Math.min(100, Math.round((totalExpenses / priceEstimate) * 100))
-                  : 0;
+              const progress = priceEstimate > 0 ? Math.min(100, Math.round((totalExpenses / priceEstimate) * 100)) : 0;
               const participants = event.event_participants || [];
 
               return (
                 <Link key={event.id} to={`/eventos/${event.id}`} className="block">
-                  <Card className="space-y-4">
+                  <Card className="space-y-4 hover:border-primary/20 transition-colors">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-3">
-                        <div className="flex size-12 flex-shrink-0 items-center justify-center rounded-2xl bg-primary/12">
-                          <span
-                            className="material-symbols-outlined text-[1.4rem] text-primary"
-                            style={{ fontVariationSettings: "'FILL' 1" }}
-                          >
-                            cake
+                        <div className="flex size-12 flex-shrink-0 items-center justify-center rounded-2xl bg-primary/10">
+                          <span className="material-symbols-outlined text-[1.4rem] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>
+                            celebration
                           </span>
                         </div>
                         <div>
-                          <p className="font-bold text-text">
-                            {event.birthday_profile?.display_name || "Evento"}
-                          </p>
-                          <p className="text-xs text-text-muted">
-                            {event.groups?.name} · {participants.length} personas
+                          <p className="font-black text-text">Para {event.birthday_profile?.display_name?.split(" ")[0] || "Alguien"}</p>
+                          <p className="text-xs font-bold text-text-muted uppercase tracking-wider">
+                            {event.groups?.name} · {participants.length} Cómplices
                           </p>
                         </div>
                       </div>
-                      <StatusBadge status={event.status}>{event.status}</StatusBadge>
+                      <StatusBadge status={event.status}>{event.status === 'active' ? 'En marcha' : event.status}</StatusBadge>
                     </div>
 
                     {priceEstimate > 0 && (
-                      <ProgressBar
-                        label="Recolectado"
-                        rightLabel={`${progress}%`}
-                        value={progress}
-                      />
+                      <ProgressBar label="Fondo recolectado" rightLabel={`${progress}%`} value={progress} />
                     )}
 
                     <div className="flex items-center justify-between">
-                      <AvatarStack
-                        users={participants.map((p) => ({
-                          id: p.user_id,
-                          name: p.profiles?.display_name,
-                          avatar_url: p.profiles?.avatar_url
-                        }))}
-                        max={3}
-                      />
+                      <AvatarStack users={participants.map((p) => ({ id: p.user_id, name: p.profiles?.display_name, avatar_url: p.profiles?.avatar_url }))} max={3} />
                       {priceEstimate > 0 && (
-                        <p className="text-xs text-text-muted">
-                          Meta: {formatCurrency(priceEstimate)}
+                        <p className="text-xs font-black text-text-muted">
+                          Objetivo: <span className="text-text">{formatCurrency(priceEstimate)}</span>
                         </p>
                       )}
                     </div>
@@ -304,56 +278,29 @@ export function HomePage() {
           )}
         </div>
 
-        {/* Notifications */}
-        {notificationsQuery.data.length > 0 && (
-          <div className="space-y-3">
-            <h2 className="text-lg font-bold text-text">Avisos</h2>
-            {notificationsQuery.data.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className="flex w-full items-start gap-3 rounded-2xl bg-surface px-4 py-4 text-left shadow-card"
-                onClick={() => markReadMutation.mutate(item.id)}
-              >
-                <span
-                  className="material-symbols-outlined mt-0.5 text-[1.25rem] text-primary"
-                  style={{ fontVariationSettings: "'FILL' 1" }}
-                >
-                  notifications
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-text">{item.type}</p>
-                  <p className="text-sm text-text-muted">
-                    {item.payload?.message || "Tienes una actualización nueva."}
-                  </p>
-                </div>
-              </button>
-            ))}
+        {/* Groups Empty State (if needed) */}
+        {groupsQuery.data.length === 0 && eventsQuery.data.length === 0 && (
+          <div className="animate-in fade-in slide-in-from-bottom-2 duration-700 delay-300 px-2">
+            <Card className="bg-gradient-to-br from-primary/10 to-bg border-primary/20 p-8 text-center space-y-6">
+              <div className="size-20 bg-primary/20 rounded-[1.75rem] flex items-center justify-center mx-auto shadow-float">
+                <span className="material-symbols-outlined text-primary text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>add_task</span>
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-xl font-black text-text">¡Empieza la magia!</h3>
+                <p className="text-sm text-text-muted leading-relaxed">Crea un grupo con tus amigos más cercanos para que nunca se les pase otro cumpleaños.</p>
+              </div>
+              <Button size="pill" className="w-full" onClick={() => navigate("/grupos")}>Ir a mis grupos</Button>
+            </Card>
           </div>
         )}
 
-        {/* Groups */}
-        {groupsQuery.data.length === 0 && (
-          <EmptyState
-            icon="groups"
-            title="Crea tu primer grupo"
-            description="Empieza con familia, amigos o equipo de trabajo."
-            actionLabel="Ir a grupos"
-            onAction={() => navigate("/grupos")}
-          />
+        {/* New surprise CTA */}
+        {groupsQuery.data.length > 0 && (
+          <Button size="pill" className="gap-3 shadow-xl active:scale-95 transition-all text-lg font-black h-16 w-full mt-4" onClick={() => navigate("/grupos")}>
+            <span className="material-symbols-outlined text-[1.5rem]" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
+            Planear nueva sorpresa
+          </Button>
         )}
-
-        {/* New event CTA */}
-        <Button
-          size="pill"
-          className="gap-3"
-          onClick={() => navigate("/grupos")}
-        >
-          <span className="material-symbols-outlined text-[1.25rem]" style={{ fontVariationSettings: "'FILL' 1" }}>
-            add_circle
-          </span>
-          Nueva misión de regalo
-        </Button>
       </div>
     </AppShell>
   );

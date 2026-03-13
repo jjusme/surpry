@@ -54,7 +54,7 @@ const months = [
   [12, "Diciembre"]
 ];
 
-export function OnboardingPage() {
+export function ProfileSetupPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, isSupabaseConfigured } = useAuth();
@@ -140,6 +140,7 @@ export function OnboardingPage() {
         queryClient.invalidateQueries({ queryKey: ["wishlist", user.id] }),
         queryClient.invalidateQueries({ queryKey: ["payment-destinations", user.id] })
       ]);
+      localStorage.setItem("has_completed_setup", "true");
       navigate("/inicio", { replace: true });
     },
     onError: (error) => {
@@ -153,18 +154,18 @@ export function OnboardingPage() {
   });
 
   if (!user) {
-    return <LoadingState message="Preparando onboarding..." fullScreen />;
+    return <LoadingState message="Preparando tu perfil..." fullScreen />;
   }
 
   if (profileQuery.isLoading) {
-    return <LoadingState message="Cargando tu perfil..." fullScreen />;
+    return <LoadingState message="Cargando tus datos..." fullScreen />;
   }
 
   if (profileQuery.error) {
     return (
       <div className="app-frame flex items-center px-4">
         <ErrorState
-          title="No pudimos preparar tu onboarding"
+          title="No pudimos cargar tu perfil"
           description={profileQuery.error.message}
           onRetry={profileQuery.refetch}
         />
@@ -173,23 +174,24 @@ export function OnboardingPage() {
   }
 
   return (
-    <AppShell hideNav header={<PageHeader title="Completa tu perfil" subtitle="Onboarding" />}>
-      <form className="space-y-4 pt-4" onSubmit={onSubmit}>
-        <Card className="space-y-4">
-          <div>
-            <h2 className="text-lg font-bold text-text">1. Tu perfil</h2>
-            <p className="text-sm text-text-muted">
-              Esta informacion se usa para grupos, calendario y eventos futuros.
-            </p>
+    <AppShell hideNav header={<PageHeader title="Configura tu perfil" subtitle="Paso final" />}>
+      <form className="space-y-4 pt-4 pb-12" onSubmit={onSubmit}>
+        <div className="flex flex-col items-center gap-2 mb-4 text-center">
+          <div className="size-20 rounded-[1.5rem] bg-primary/15 flex items-center justify-center mb-2">
+            <span className="material-symbols-outlined text-[2.5rem] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>person_add</span>
           </div>
+          <h2 className="text-2xl font-black text-text">Dinos quién eres</h2>
+          <p className="text-sm text-text-muted px-6">Para que tus amigos sepan cuándo es tu cumple y cómo enviarte sorpresas.</p>
+        </div>
 
-          <FormField label="Nombre visible" error={errors.display_name?.message}>
-            <Input placeholder="Como te veran los demas" {...register("display_name")} />
+        <Card className="space-y-4">
+          <FormField label="Tu nombre / apodo" error={errors.display_name?.message}>
+            <Input placeholder="Cómo te verán los demás" {...register("display_name")} />
           </FormField>
 
           <div className="grid grid-cols-2 gap-3">
-            <FormField label="Dia" error={errors.birthday_day?.message}>
-              <Input type="number" min="1" max="31" placeholder="15" {...register("birthday_day")} />
+            <FormField label="Día de cumple" error={errors.birthday_day?.message}>
+              <Input type="number" min="1" max="31" placeholder="Ej. 15" {...register("birthday_day")} />
             </FormField>
             <FormField label="Mes" error={errors.birthday_month?.message}>
               <Select {...register("birthday_month")}>
@@ -206,35 +208,32 @@ export function OnboardingPage() {
 
         <Card className="space-y-4">
           <div>
-            <h2 className="text-lg font-bold text-text">2. Primer regalo sugerido</h2>
+            <h2 className="text-lg font-bold text-text">Sugerencia de regalo (Opcional)</h2>
             <p className="text-sm text-text-muted">
-              Es opcional, pero ayuda a que tu primer evento tenga contexto desde el dia uno.
+              Algo que siempre hayas querido. Facilítale el trabajo a tus cómplices.
             </p>
           </div>
 
-          <FormField label="Titulo">
-            <Input placeholder="Ej. Audifonos Sony" {...register("wishlist_title")} />
+          <FormField label="Qué te gustaría">
+            <Input placeholder="Ej. Audífonos, curso, cena..." {...register("wishlist_title")} />
           </FormField>
-          <FormField label="Link">
+          <FormField label="Link (opcional)">
             <Input placeholder="https://..." {...register("wishlist_url")} />
           </FormField>
-          <FormField label="Precio estimado">
-            <Input type="number" placeholder="3499" {...register("wishlist_price")} />
-          </FormField>
-          <FormField label="Nota">
-            <TextArea rows={3} placeholder="Alguna pista util" {...register("wishlist_notes")} />
+          <FormField label="Precio aprox (opcional)">
+            <Input type="number" placeholder="Ej. 1500" {...register("wishlist_price")} />
           </FormField>
         </Card>
 
         <Card className="space-y-4">
           <div>
-            <h2 className="text-lg font-bold text-text">3. Metodo de reembolso</h2>
+            <h2 className="text-lg font-bold text-text">¿Cómo recibir dinero? (Opcional)</h2>
             <p className="text-sm text-text-muted">
-              Tambien es opcional. Solo se mostrara cuando tengas gastos relacionados.
+              Tus datos de banco para que te reembolsen gastos de otros regalos.
             </p>
           </div>
 
-          <FormField label="Tipo">
+          <FormField label="Tipo de cuenta">
             <Select {...register("payment_type")}>
               <option value="">Selecciona</option>
               {PAYMENT_DESTINATION_TYPES.map((option) => (
@@ -244,27 +243,21 @@ export function OnboardingPage() {
               ))}
             </Select>
           </FormField>
-          <FormField label="Alias interno">
-            <Input placeholder="BBVA personal" {...register("payment_label")} />
+          <FormField label="Banco y Titular">
+            <div className="grid grid-cols-2 gap-3">
+              <Input placeholder="Ej. BBVA" {...register("payment_bank_name")} />
+              <Input placeholder="Nombre" {...register("payment_account_holder")} />
+            </div>
           </FormField>
-          <FormField label="Banco">
-            <Input placeholder="BBVA" {...register("payment_bank_name")} />
-          </FormField>
-          <FormField label="Titular">
-            <Input placeholder="Nombre del beneficiario" {...register("payment_account_holder")} />
-          </FormField>
-          <FormField label="Dato a compartir">
-            <Input placeholder="CLABE, tarjeta o referencia" {...register("payment_destination_value")} />
-          </FormField>
-          <FormField label="Nota opcional">
-            <TextArea rows={2} placeholder="Ej. transferencia solo entre semana" {...register("payment_note")} />
+          <FormField label="CLABE / Tarjeta / Alias">
+            <Input placeholder="El dato para depositarte" {...register("payment_destination_value")} />
           </FormField>
         </Card>
 
-        {serverError ? <p className="text-sm font-medium text-danger">{serverError}</p> : null}
+        {serverError ? <p className="text-sm font-medium text-danger bg-danger/5 p-3 rounded-xl border border-danger/20">{serverError}</p> : null}
 
-        <Button type="submit" size="lg" className="w-full" disabled={!isSupabaseConfigured || isSubmitting || saveMutation.isPending}>
-          {isSubmitting || saveMutation.isPending ? "Guardando..." : "Terminar onboarding"}
+        <Button type="submit" size="pill" className="w-full h-14 text-lg font-black shadow-lg" disabled={!isSupabaseConfigured || isSubmitting || saveMutation.isPending}>
+          {isSubmitting || saveMutation.isPending ? "Configurando..." : "¡Listo, llévame al inicio!"}
         </Button>
       </form>
     </AppShell>

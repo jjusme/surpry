@@ -94,14 +94,14 @@ export function GroupDetailPage() {
               className="material-symbols-outlined text-[3rem] text-primary"
               style={{ fontVariationSettings: "'FILL' 1" }}
             >
-              groups
+              groups_3
             </span>
           </div>
           <div className="space-y-1">
             <h1 className="text-2xl font-black tracking-tight text-text">{group.name}</h1>
             <p className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
               <span className="material-symbols-outlined text-[0.9rem]" style={{ fontVariationSettings: "'FILL' 1" }}>verified_user</span>
-              {members.length} Agente{members.length !== 1 ? "s" : ""}
+              {members.length} Cómplice{members.length !== 1 ? "s" : ""}
             </p>
           </div>
 
@@ -114,7 +114,7 @@ export function GroupDetailPage() {
                 disabled={inviteMutation.isPending}
               >
                 <span className="material-symbols-outlined text-[1.15rem]">add_link</span>
-                {inviteMutation.isPending ? "Generando..." : "Invitar amigos"}
+                {inviteMutation.isPending ? "Generando link..." : "Sumar cómplices"}
               </Button>
             ) : (
               <div className="relative group overflow-hidden rounded-[1.5rem] bg-surface-muted border border-border/50 p-1.5 flex items-center transition-all hover:border-primary/30 animate-in slide-in-from-bottom-2 duration-300">
@@ -144,7 +144,7 @@ export function GroupDetailPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <h2 className="text-lg font-black tracking-tight text-text">Misiones activas</h2>
+              <h2 className="text-lg font-black tracking-tight text-text">Planes activos</h2>
               <span className="rounded-full bg-danger/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-danger">
                 TOP SECRET
               </span>
@@ -154,9 +154,9 @@ export function GroupDetailPage() {
           {membersWithBirthday.filter((m) => m.user_id !== user?.id).length > 0 && (
             <Card className="space-y-5 border-l-4 border-primary p-5 shadow-sm">
               <div>
-                <p className="text-base font-bold text-text">Inicia una nueva misión</p>
+                <p className="text-base font-bold text-text">Inicia un plan sorpresa</p>
                 <p className="text-sm text-text-muted leading-relaxed">
-                  Solo los otros agentes verán esto. El objetivo no recibirá notificaciones.
+                  Solo los cómplices verán esto. El festejado no recibirá ninguna notificación.
                 </p>
               </div>
               <div className="space-y-4">
@@ -165,7 +165,7 @@ export function GroupDetailPage() {
                   value={selectedBirthdayUser}
                   onChange={(e) => setSelectedBirthdayUser(e.target.value)}
                 >
-                  <option value="">Selecciona al Objetivo</option>
+                  <option value="">¿A quién celebramos?</option>
                   {membersWithBirthday
                     .filter((m) => m.user_id !== user?.id)
                     .map((m) => (
@@ -184,7 +184,7 @@ export function GroupDetailPage() {
                   onClick={() => eventMutation.mutate()}
                   disabled={!selectedBirthdayUser || eventMutation.isPending}
                 >
-                  {eventMutation.isPending ? "Preparando Intel..." : "Activar Misión"}
+                  {eventMutation.isPending ? "Preparando todo..." : "Iniciar sorpresa"}
                 </Button>
               </div>
             </Card>
@@ -195,7 +195,7 @@ export function GroupDetailPage() {
               <div className="rounded-[1.5rem] bg-surface-muted/50 border border-dashed border-border p-8 text-center space-y-2">
                 <span className="material-symbols-outlined text-text-muted/30 text-4xl">inventory_2</span>
                 <p className="text-sm text-text-muted font-medium">
-                  No hay misiones activas en este grupo.
+                  No hay planes activos en este grupo.
                 </p>
               </div>
             ) : (
@@ -207,11 +207,11 @@ export function GroupDetailPage() {
                         className="material-symbols-outlined text-[1.4rem] text-primary"
                         style={{ fontVariationSettings: "'FILL' 1" }}
                       >
-                        target
+                        celebration
                       </span>
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-bold uppercase tracking-wide text-text-muted mb-0.5">OBJETIVO</p>
+                      <p className="text-xs font-bold uppercase tracking-wide text-text-muted mb-0.5">Festejado</p>
                       <p className="text-lg font-black text-text truncate capitalize">
                         {event.birthday_profile?.display_name || "Desconocido"}
                       </p>
@@ -233,8 +233,8 @@ export function GroupDetailPage() {
         {/* Members list */}
         <div className="space-y-4 pt-4 pb-12">
           <div className="flex items-center justify-between px-1">
-            <h2 className="text-lg font-black tracking-tight text-text">Equipo de Agentes</h2>
-            <span className="text-xs font-bold text-text-muted">{members.length} conectados</span>
+            <h2 className="text-lg font-black tracking-tight text-text">Tu círculo de cómplices</h2>
+            <span className="text-xs font-bold text-text-muted">{members.length} activos</span>
           </div>
 
           <div className="grid grid-cols-1 gap-2.5">
@@ -251,7 +251,7 @@ export function GroupDetailPage() {
                   />
                   <div>
                     <p className="text-sm font-bold text-text flex items-center gap-2">
-                      {member.profiles?.display_name || "Agente Anónimo"}
+                      {member.profiles?.display_name || "Anónimo"}
                       {member.user_id === user?.id && (
                         <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-primary">Tú</span>
                       )}

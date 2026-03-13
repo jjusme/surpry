@@ -9,7 +9,11 @@ function lazyPage(loader, exportName) {
 }
 
 function withSuspense(element) {
-  return <Suspense fallback={<LoadingState message="Cargando pantalla..." fullScreen />}>{element}</Suspense>;
+  return (
+    <Suspense fallback={<LoadingState message="Cargando pantalla..." fullScreen />}>
+      {element}
+    </Suspense>
+  );
 }
 
 const ForgotPasswordPage = lazyPage(() => import("../features/auth/pages/ForgotPasswordPage"), "ForgotPasswordPage");
@@ -21,7 +25,7 @@ const EventDetailPage = lazyPage(() => import("../features/events/pages/EventDet
 const GroupsListPage = lazyPage(() => import("../features/groups/pages/GroupsListPage"), "GroupsListPage");
 const GroupDetailPage = lazyPage(() => import("../features/groups/pages/GroupDetailPage"), "GroupDetailPage");
 const JoinGroupPage = lazyPage(() => import("../features/groups/pages/JoinGroupPage"), "JoinGroupPage");
-const OnboardingPage = lazyPage(() => import("../features/profile/pages/OnboardingPage"), "OnboardingPage");
+const ProfileSetupPage = lazyPage(() => import("../features/profile/pages/ProfileSetupPage"), "ProfileSetupPage");
 const PaymentMethodsPage = lazyPage(() => import("../features/profile/pages/PaymentMethodsPage"), "PaymentMethodsPage");
 const ProfilePage = lazyPage(() => import("../features/profile/pages/ProfilePage"), "ProfilePage");
 const ShareDetailPage = lazyPage(() => import("../features/reimbursements/pages/ShareDetailPage"), "ShareDetailPage");
@@ -52,7 +56,8 @@ export const router = createBrowserRouter([
   {
     element: <ProtectedRoute />,
     children: [
-      { path: "/onboarding", element: withSuspense(<OnboardingPage />) },
+      { path: "/setup", element: withSuspense(<ProfileSetupPage />) },
+      { path: "/onboarding", element: <Navigate to="/setup" replace /> },
       { path: "/inicio", element: withSuspense(<HomePage />) },
       { path: "/grupos", element: withSuspense(<GroupsListPage />) },
       { path: "/grupos/:groupId", element: withSuspense(<GroupDetailPage />) },

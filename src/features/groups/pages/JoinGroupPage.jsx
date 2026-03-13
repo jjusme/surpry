@@ -26,15 +26,15 @@ export function JoinGroupPage() {
   });
 
   if (inviteQuery.isLoading) {
-    return <LoadingState message="Validando credenciales de acceso..." fullScreen />;
+    return <LoadingState message="Validando invitación..." fullScreen />;
   }
 
   if (inviteQuery.error || (inviteQuery.isSuccess && !inviteQuery.data)) {
     return (
       <div className="app-frame flex items-center px-4">
         <ErrorState
-          title="Invitación no válida"
-          description={inviteQuery.error?.message || "Este enlace de invitación ha expirado o no existe."}
+          title="Invitación caducada"
+          description={inviteQuery.error?.message || "Este enlace ya no es válido o ha expirado."}
           onRetry={inviteQuery.refetch}
         />
       </div>
@@ -44,32 +44,32 @@ export function JoinGroupPage() {
   const group = inviteQuery.data?.groups;
 
   return (
-    <AppShell hideNav header={<PageHeader title="Invitación" subtitle="Nueva Misión" />}>
+    <AppShell hideNav header={<PageHeader title="Invitación" subtitle="Plan Secreto" />}>
       <div className="space-y-6 pt-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
         <div className="flex flex-col items-center text-center gap-4">
-          <div className="flex size-20 items-center justify-center rounded-[1.75rem] bg-primary/15 shadow-float">
-            <span className="material-symbols-outlined text-[2.5rem] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>
-              security
+          <div className="flex size-20 items-center justify-center rounded-[1.75rem] bg-primary/15 shadow-float text-primary">
+            <span className="material-symbols-outlined text-[2.5rem]" style={{ fontVariationSettings: "'FILL' 1" }}>
+              favorite
             </span>
           </div>
           <div className="space-y-2">
-            <p className="text-xs font-black uppercase tracking-[0.24em] text-primary">Solicitud de Acceso</p>
+            <p className="text-xs font-black uppercase tracking-[0.24em] text-primary">Solicitud de Cómplice</p>
             <h1 className="text-3xl font-black tracking-tight text-text">
-              {group?.name || "Grupo Secreto"}
+              {group?.name || "Grupo Sorpresa"}
             </h1>
           </div>
         </div>
 
         <Card className="p-6 text-center space-y-6 shadow-2xl border-t-4 border-primary">
           <p className="text-sm leading-relaxed text-text-muted px-2">
-            Has sido invitado a unirte a este equipo de agentes para coordinar eventos sorpresa sin que el objetivo se entere.
+            Te han invitado a ser cómplice en este grupo para planear momentos especiales sin que nadie se entere antes de tiempo.
           </p>
 
           {!user ? (
             <div className="space-y-4 pt-2">
               <div className="rounded-2xl bg-surface-muted p-4 border border-border/50">
                 <p className="text-xs font-bold text-text-muted">
-                  Protocolo de seguridad: Necesitas una cuenta de agente para continuar.
+                  Protocolo Surpry: Necesitas una cuenta de cómplice para continuar.
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -88,21 +88,21 @@ export function JoinGroupPage() {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-success"></span>
                 </span>
-                Agente Autenticado
+                Cómplice Identificado
               </div>
               <Button
                 className="w-full h-14 text-lg font-black tracking-wide shadow-lg active:scale-95 transition-all"
                 onClick={() => acceptMutation.mutate()}
                 disabled={acceptMutation.isPending}
               >
-                {acceptMutation.isPending ? "Procesando Acceso..." : "Aceptar Misión"}
+                {acceptMutation.isPending ? "Procesando..." : "¡Sí, acepto!"}
               </Button>
             </div>
           )}
         </Card>
 
         <p className="text-center text-[10px] font-bold text-text-muted/40 uppercase tracking-[0.2em]">
-          Surpry Intelligence Agency · Top Secret
+          Surpry Secret Planning · Shhh!
         </p>
       </div>
     </AppShell>

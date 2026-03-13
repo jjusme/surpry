@@ -155,20 +155,20 @@ export function EventDetailPage() {
     e.preventDefault();
     setServerError("");
     if (selectedParticipants.length === 0) {
-      setServerError("Selecciona al menos un participante para dividir el gasto.");
+      setServerError("Selecciona al menos un cómplice para dividir el gasto.");
       return;
     }
     await expenseMutation.mutateAsync({ ...expenseForm, participant_ids: selectedParticipants });
   };
 
   if (detailQuery.isLoading || paymentQuery.isLoading)
-    return <LoadingState message="Cargando evento..." fullScreen />;
+    return <LoadingState message="Cargando detalles..." fullScreen />;
 
   if (detailQuery.error || paymentQuery.error) {
     return (
       <div className="app-frame flex items-center px-4">
         <ErrorState
-          title="No pudimos cargar este evento"
+          title="No pudimos cargar esta sorpresa"
           description={detailQuery.error?.message || paymentQuery.error?.message}
           onRetry={() => {
             detailQuery.refetch();
@@ -184,41 +184,40 @@ export function EventDetailPage() {
       activeTab="eventos"
       header={
         <PageHeader
-          subtitle="Operación"
-          title={event?.birthday_profile?.display_name || "Evento secreto"}
+          subtitle="Plan Sorpresa"
+          title={event?.birthday_profile?.display_name || "Sorpresa"}
           backTo="/eventos"
         />
       }
     >
-      <div className="space-y-4 pt-4">
+      <div className="space-y-4 pt-4 pb-12">
         {/* Hero */}
-        <div className="flex flex-col items-center gap-3 py-4 text-center">
+        <div className="flex flex-col items-center gap-3 py-4 text-center animate-in fade-in zoom-in duration-500">
           <div className="relative">
             <Avatar
               name={event?.birthday_profile?.display_name}
               url={event?.birthday_profile?.avatar_url}
-              className="size-28 text-2xl"
+              className="size-28 text-2xl ring-4 ring-bg shadow-float"
               ring
             />
-            <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-primary px-3 py-0.5 text-[10px] font-black uppercase tracking-[0.15em] text-slate-950 shadow-float">
-              Target
+            <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-primary px-3 py-0.5 text-[10px] font-black uppercase tracking-[0.15em] text-slate-950 shadow-float ring-2 ring-bg">
+              Homenajeado
             </span>
           </div>
           <div className="mt-3 space-y-1">
-            <h2 className="text-2xl font-extrabold text-text">
+            <h2 className="text-2xl font-black text-text tracking-tight">
               {event?.birthday_profile?.display_name}
             </h2>
-            <p className="text-sm italic text-text-muted">"¡Shhh! Es una misión secreta."</p>
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-surface-muted px-3 py-1.5">
+            <p className="text-sm font-medium italic text-text-muted">"¡Shhh! Es un plan secreto."</p>
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-surface-muted px-4 py-1.5 border border-border/50">
               <span
                 className="material-symbols-outlined text-[1rem] text-primary"
                 style={{ fontVariationSettings: "'FILL' 1" }}
               >
-                calendar_month
+                calendar_today
               </span>
               <span className="text-xs font-bold text-text">
-                Fecha objetivo:{" "}
-                {formatDate(event?.birthday_date, { day: "numeric", month: "short" }).toUpperCase()}
+                Festa: {formatDate(event?.birthday_date, { day: "numeric", month: "long" }).toUpperCase()}
               </span>
             </div>
           </div>
@@ -231,18 +230,18 @@ export function EventDetailPage() {
           )}
         </div>
 
-        {/* Tab bar with underline indicator */}
+        {/* Tab bar */}
         <div className="sticky top-[3.75rem] z-10 -mx-4 border-b border-border bg-bg/95 px-4 backdrop-blur-md">
-          <div className="flex gap-1 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+          <div className="flex gap-1 overflow-x-auto no-scrollbar" style={{ scrollbarWidth: "none" }}>
             {EVENT_TABS.map((tab) => (
               <button
                 key={tab.id}
                 type="button"
                 className={cn(
-                  "flex-shrink-0 border-b-2 px-4 py-3 text-sm font-semibold transition-colors",
+                  "flex-shrink-0 border-b-2 px-4 py-4 text-sm font-black uppercase tracking-wider transition-all",
                   activeTab === tab.id
                     ? "border-primary text-primary"
-                    : "border-transparent text-text-muted hover:text-text"
+                    : "border-transparent text-text-muted hover:text-text opacity-60"
                 )}
                 onClick={() => setActiveTab(tab.id)}
               >
@@ -253,201 +252,213 @@ export function EventDetailPage() {
         </div>
 
         {serverError && (
-          <p className="rounded-2xl bg-danger/10 px-4 py-3 text-sm font-medium text-danger">
+          <p className="rounded-2xl bg-danger/10 px-4 py-3 text-sm font-medium text-danger border border-danger/20">
             {serverError}
           </p>
         )}
 
         {/* RESUMEN */}
         {activeTab === "resumen" && (
-          <div className="space-y-4">
-            <Card className="space-y-4">
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-400">
+            <Card className="space-y-5 shadow-sm border-l-4 border-primary p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted">
-                    Estado de la misión
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted mb-1">
+                    Estado del plan
                   </p>
-                  <StatusBadge status={event?.status} className="mt-1">
-                    {event?.status}
+                  <StatusBadge status={event?.status}>
+                    {event?.status === 'active' ? 'EN MARCHA' : event?.status.toUpperCase()}
                   </StatusBadge>
                 </div>
-                <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/12">
+                <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10">
                   <span
-                    className="material-symbols-outlined text-[1.4rem] text-primary"
+                    className="material-symbols-outlined text-primary text-2xl"
                     style={{ fontVariationSettings: "'FILL' 1" }}
                   >
-                    target
+                    rocket_launch
                   </span>
                 </div>
               </div>
 
               {priceGoal > 0 && (
                 <ProgressBar
-                  label="Financiamiento"
+                  label="Fondo para el regalo"
                   rightLabel={`${formatCurrency(totalExpenses)} / ${formatCurrency(priceGoal)}`}
                   value={fundingPct}
                 />
               )}
             </Card>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted">
-                  Agentes activos
+            <div className="space-y-3">
+              <div className="flex items-center justify-between px-1">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">
+                  Cómplices activos
                 </p>
-                <span className="text-xs font-semibold text-primary">{participants.length}</span>
+                <span className="text-xs font-black text-primary">{participants.length} conectados</span>
               </div>
-              {participants.map((p) => (
-                <div
-                  key={p.id}
-                  className="flex items-center gap-3 rounded-2xl bg-surface px-4 py-3 shadow-card"
-                >
-                  <Avatar
-                    name={p.profiles?.display_name}
-                    url={p.profiles?.avatar_url}
-                    className="size-10"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-text">
-                      {p.profiles?.display_name}
-                    </p>
-                    <p className="text-xs uppercase tracking-[0.15em] text-text-muted">{p.role}</p>
+              <div className="grid gap-2">
+                {participants.map((p) => (
+                  <div
+                    key={p.id}
+                    className="flex items-center gap-3 rounded-2xl bg-surface/50 border border-border/40 px-4 py-3 transition-colors hover:bg-surface"
+                  >
+                    <Avatar
+                      name={p.profiles?.display_name}
+                      url={p.profiles?.avatar_url}
+                      className="size-10 ring-2 ring-bg"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-bold text-text">
+                        {p.profiles?.display_name}
+                      </p>
+                      <p className="text-[10px] font-black uppercase tracking-wider text-text-muted">{p.role}</p>
+                    </div>
+                    <div className="flex size-7 items-center justify-center rounded-full bg-success/10">
+                      <span
+                        className="material-symbols-outlined text-[1rem] text-success"
+                        style={{ fontVariationSettings: "'FILL' 1" }}
+                      >
+                        check_circle
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex size-7 items-center justify-center rounded-full bg-success/15">
-                    <span
-                      className="material-symbols-outlined text-[1rem] text-success"
-                      style={{ fontVariationSettings: "'FILL' 1" }}
-                    >
-                      check_circle
-                    </span>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         )}
 
         {/* REGALO */}
         {activeTab === "regalo" && (
-          <div className="space-y-4">
-            <Card className="space-y-4">
+          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-400">
+            <Card className="space-y-5 p-5 shadow-sm border-t-2 border-primary/20">
               <div>
-                <h3 className="text-lg font-bold text-text">Proponer regalo</h3>
-                <p className="text-sm text-text-muted">
-                  Idea nueva o referencia de la wishlist del cumpleañero.
+                <h3 className="text-lg font-black text-text tracking-tight">Proponer regalo</h3>
+                <p className="text-sm font-medium text-text-muted mt-1 leading-relaxed">
+                  Idea nueva o referencia del cumpleañero. ¡Ayuda a decidir!
                 </p>
               </div>
               <form className="space-y-4" onSubmit={submitGift}>
-                <FormField label="Título">
+                <FormField label="¿Qué tienes en mente?">
                   <Input
+                    placeholder="Ej. Audífonos Bluetooth"
                     value={giftForm.title}
                     onChange={(e) => setGiftForm((c) => ({ ...c, title: e.target.value }))}
                   />
                 </FormField>
-                <FormField label="Link">
+                <FormField label="Link del producto (opcional)">
                   <Input
+                    placeholder="https://amazon.com.mx/..."
                     value={giftForm.url}
                     onChange={(e) => setGiftForm((c) => ({ ...c, url: e.target.value }))}
                   />
                 </FormField>
-                <FormField label="Precio estimado">
+                <FormField label="Precio aproximado">
                   <Input
                     type="number"
+                    placeholder="2500"
                     value={giftForm.price_estimate}
                     onChange={(e) =>
                       setGiftForm((c) => ({ ...c, price_estimate: e.target.value }))
                     }
                   />
                 </FormField>
-                <FormField label="Nota">
+                <FormField label="Notas o detalles">
                   <TextArea
                     rows={2}
+                    placeholder="Talle, color o por qué crees que es buena idea."
                     value={giftForm.notes}
                     onChange={(e) => setGiftForm((c) => ({ ...c, notes: e.target.value }))}
                   />
                 </FormField>
                 <Button
                   type="submit"
-                  size="lg"
-                  className="w-full"
+                  size="pill"
+                  className="w-full font-black text-base h-12"
                   disabled={giftMutation.isPending || !giftForm.title.trim()}
                 >
-                  {giftMutation.isPending ? "Guardando..." : "Agregar propuesta"}
+                  {giftMutation.isPending ? "Agregando..." : "Subir propuesta"}
                 </Button>
               </form>
             </Card>
 
-            {gifts.length === 0 ? (
-              <EmptyState
-                icon="redeem"
-                title="Sin propuestas todavía"
-                description="Agrega la primera opción de regalo para este evento."
-              />
-            ) : (
-              gifts.map((gift) => (
-                <Card key={gift.id} className="space-y-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-bold text-text">{gift.title}</p>
-                      {gift.price_estimate ? (
-                        <p className="text-sm font-semibold text-primary-strong">
-                          {formatCurrency(gift.price_estimate)}
-                        </p>
-                      ) : null}
-                      {gift.notes ? (
-                        <p className="text-sm text-text-muted">{gift.notes}</p>
-                      ) : null}
+            <div className="space-y-3">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted px-1">Opciones actuales</p>
+              {gifts.length === 0 ? (
+                <div className="rounded-[2rem] border border-dashed border-border p-8 text-center space-y-2 bg-surface/30">
+                  <span className="material-symbols-outlined text-text-muted/20 text-4xl">inventory_2</span>
+                  <p className="text-sm font-medium text-text-muted italic">Aún no hay propuestas de regalo en este plan.</p>
+                </div>
+              ) : (
+                gifts.map((gift) => (
+                  <Card key={gift.id} className="space-y-4 p-5 hover:border-primary/20 transition-colors">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <p className="font-bold text-text text-lg tracking-tight leading-tight">{gift.title}</p>
+                        {gift.price_estimate ? (
+                          <p className="text-sm font-black text-primary">
+                            {formatCurrency(gift.price_estimate)}
+                          </p>
+                        ) : null}
+                        {gift.notes ? (
+                          <p className="text-sm text-text-muted italic leading-relaxed pt-1">"{gift.notes}"</p>
+                        ) : null}
+                      </div>
+                      <StatusBadge status={gift.status}>{gift.status === 'proposed' ? 'IDEA' : gift.status.toUpperCase()}</StatusBadge>
                     </div>
-                    <StatusBadge status={gift.status}>{gift.status}</StatusBadge>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant="secondary"
-                      size="md"
-                      onClick={() =>
-                        giftStatusMutation.mutate({ giftId: gift.id, status: "reserved" })
-                      }
-                    >
-                      Reservar
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="md"
-                      onClick={() =>
-                        giftStatusMutation.mutate({ giftId: gift.id, status: "bought" })
-                      }
-                    >
-                      Marcar comprado
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="md"
-                      onClick={() =>
-                        giftStatusMutation.mutate({ giftId: gift.id, status: "discarded" })
-                      }
-                    >
-                      Descartar
-                    </Button>
-                  </div>
-                </Card>
-              ))
-            )}
+                    <div className="flex items-center gap-2 pt-1">
+                      <Button
+                        variant="secondary"
+                        size="md"
+                        className="flex-1 text-xs font-black uppercase rounded-xl h-10"
+                        onClick={() =>
+                          giftStatusMutation.mutate({ giftId: gift.id, status: "reserved" })
+                        }
+                      >
+                        Lo pido yo
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="md"
+                        className="flex-1 text-xs font-black uppercase rounded-xl h-10"
+                        onClick={() =>
+                          giftStatusMutation.mutate({ giftId: gift.id, status: "bought" })
+                        }
+                      >
+                        ¡Comprado!
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="md"
+                        className="flex-none size-10 flex items-center justify-center rounded-xl p-0"
+                        onClick={() =>
+                          giftStatusMutation.mutate({ giftId: gift.id, status: "discarded" })
+                        }
+                      >
+                        <span className="material-symbols-outlined text-danger/60">delete</span>
+                      </Button>
+                    </div>
+                  </Card>
+                ))
+              )}
+            </div>
           </div>
         )}
 
         {/* GASTOS */}
         {activeTab === "gastos" && (
-          <div className="space-y-4">
-            <Card className="space-y-4">
+          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-400">
+            <Card className="space-y-5 p-5 shadow-sm">
               <div>
-                <h3 className="text-lg font-bold text-text">Registrar gasto</h3>
-                <p className="text-sm text-text-muted">
-                  Cada gasto genera shares para los participantes seleccionados.
+                <h3 className="text-lg font-black text-text tracking-tight">Dividir un gasto</h3>
+                <p className="text-sm font-medium text-text-muted mt-1 leading-relaxed">
+                  ¿Pagaste algo? Regístralo aquí para que los demás te paguen su parte.
                 </p>
               </div>
               <form className="space-y-4" onSubmit={submitExpense}>
-                <FormField label="Concepto">
+                <FormField label="¿Qué se compró?">
                   <Input
+                    placeholder="Ej. El pastel de chocolate"
                     value={expenseForm.title}
                     onChange={(e) =>
                       setExpenseForm((c) => ({ ...c, title: e.target.value }))
@@ -455,7 +466,7 @@ export function EventDetailPage() {
                   />
                 </FormField>
                 <div className="grid grid-cols-2 gap-3">
-                  <FormField label="Categoría">
+                  <FormField label="Tipo de gasto">
                     <Select
                       value={expenseForm.category}
                       onChange={(e) =>
@@ -469,9 +480,10 @@ export function EventDetailPage() {
                       ))}
                     </Select>
                   </FormField>
-                  <FormField label="Monto">
+                  <FormField label="Costo total">
                     <Input
                       type="number"
+                      placeholder="0.00"
                       value={expenseForm.amount}
                       onChange={(e) =>
                         setExpenseForm((c) => ({ ...c, amount: e.target.value }))
@@ -479,7 +491,7 @@ export function EventDetailPage() {
                     />
                   </FormField>
                 </div>
-                <FormField label="Método de reembolso">
+                <FormField label="¿Dónde quieres que te reembolsen?">
                   <Select
                     value={expenseForm.reimbursement_destination_id}
                     onChange={(e) =>
@@ -489,7 +501,7 @@ export function EventDetailPage() {
                       }))
                     }
                   >
-                    <option value="">Sin método asociado</option>
+                    <option value="">Selecciona tu método de pago</option>
                     {paymentQuery.data.map((item) => (
                       <option key={item.id} value={item.id}>
                         {item.label || item.type}
@@ -497,151 +509,171 @@ export function EventDetailPage() {
                     ))}
                   </Select>
                 </FormField>
-                <div className="space-y-2">
-                  <p className="text-sm font-semibold text-text">Participantes del split</p>
-                  {participants.map((p) => (
-                    <label
-                      key={p.id}
-                      className="flex items-center gap-3 rounded-2xl bg-surface-muted px-4 py-3 text-sm text-text"
-                    >
-                      <input
-                        type="checkbox"
-                        className="size-4 accent-primary"
-                        checked={selectedParticipants.includes(p.user_id)}
-                        onChange={() => toggleParticipant(p.user_id)}
-                      />
-                      <span>{p.profiles?.display_name}</span>
-                    </label>
-                  ))}
+                <div className="space-y-4">
+                  <p className="text-xs font-black uppercase tracking-[0.2em] text-text-muted px-1">Dividir con:</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {participants.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        className={cn(
+                          "flex items-center gap-2 p-3 rounded-2xl border text-left transition-all",
+                          selectedParticipants.includes(p.user_id)
+                            ? "bg-primary/10 border-primary text-text shadow-sm"
+                            : "bg-surface border-border/50 text-text-muted grayscale-[0.5] opacity-60"
+                        )}
+                        onClick={() => toggleParticipant(p.user_id)}
+                      >
+                        <Avatar name={p.profiles?.display_name} url={p.profiles?.avatar_url} className="size-6" />
+                        <span className="text-xs font-bold truncate">{p.profiles?.display_name?.split(" ")[0]}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <FormField label="Comprobante (opcional)">
+                <FormField label="Foto del ticket (opcional)">
                   <Input
                     type="file"
+                    className="p-2 h-auto text-xs"
                     onChange={(e) => setReceiptFile(e.target.files?.[0] || null)}
                   />
                 </FormField>
                 <Button
                   type="submit"
-                  size="lg"
-                  className="w-full"
+                  size="pill"
+                  className="w-full font-black text-base h-12 shadow-lg"
                   disabled={
                     expenseMutation.isPending || !expenseForm.title.trim() || !expenseForm.amount
                   }
                 >
-                  {expenseMutation.isPending ? "Guardando gasto..." : "Registrar gasto"}
+                  {expenseMutation.isPending ? "Calculando shares..." : "Registrar y dividir"}
                 </Button>
               </form>
             </Card>
 
-            {expenses.length === 0 ? (
-              <EmptyState
-                icon="payments"
-                title="Sin gastos todavía"
-                description="Registra el primero para repartir costos y generar shares."
-              />
-            ) : (
-              expenses.map((expense) => (
-                <Card key={expense.id} className="space-y-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-bold text-text">{expense.title}</p>
-                      <p className="text-xs uppercase tracking-[0.15em] text-text-muted">
-                        {expense.category}
+            <div className="space-y-3">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted px-1">Historial de gastos</p>
+              {expenses.length === 0 ? (
+                <div className="rounded-[2rem] bg-surface/30 border border-dashed border-border p-8 text-center space-y-2">
+                  <span className="material-symbols-outlined text-text-muted/20 text-4xl">payments</span>
+                  <p className="text-sm font-medium text-text-muted font-medium italic">Todavía no hay gastos registrados.</p>
+                </div>
+              ) : (
+                expenses.map((expense) => (
+                  <Card key={expense.id} className="space-y-4 p-5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-0.5">
+                        <p className="font-bold text-text tracking-tight">{expense.title}</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-text-muted opacity-60">
+                          {expense.category}
+                        </p>
+                      </div>
+                      <p className="text-lg font-black text-primary">
+                        {formatCurrency(expense.amount)}
                       </p>
                     </div>
-                    <p className="text-base font-bold text-primary-strong">
-                      {formatCurrency(expense.amount)}
-                    </p>
-                  </div>
-                  <div className="rounded-2xl bg-surface-muted px-4 py-3">
-                    <p className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-text-muted">
-                      Shares
-                    </p>
-                    <div className="space-y-2">
-                      {(expense.shares || []).map((share) => (
-                        <div key={share.id} className="flex items-center justify-between text-sm">
-                          <span className="text-text-muted">
-                            {share.user_id === user?.id ? "Tu parte" : share.user_id}
-                          </span>
-                          <span className="font-semibold text-text">
-                            {formatCurrency(share.amount_due)} · {share.status}
-                          </span>
-                        </div>
-                      ))}
+                    <div className="rounded-2xl bg-surface-muted/50 p-4 border border-border/30">
+                      <p className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">
+                        División entre cómplices
+                      </p>
+                      <div className="space-y-2.5">
+                        {(expense.shares || []).map((share) => (
+                          <div key={share.id} className="flex items-center justify-between text-xs">
+                            <span className="font-bold text-text-muted flex items-center gap-2">
+                              <span className={cn(
+                                "size-1.5 rounded-full",
+                                share.status === 'confirmed' ? "bg-success" : "bg-warning"
+                              )}></span>
+                              {share.user_id === user?.id ? "Tú" : participants.find(p => p.user_id === share.user_id)?.profiles?.display_name?.split(" ")[0]}
+                            </span>
+                            <span className="font-black text-text">
+                              {formatCurrency(share.amount_due)} <span className="text-[9px] opacity-40 ml-1 font-bold">({share.status.toUpperCase()})</span>
+                            </span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                </Card>
-              ))
-            )}
+                  </Card>
+                ))
+              )}
+            </div>
           </div>
         )}
 
         {/* PAGOS */}
         {activeTab === "pagos" && (
-          <div className="space-y-4">
-            <Card className="space-y-3">
-              <h3 className="text-lg font-bold text-text">Tus shares</h3>
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-400">
+            <Card className="space-y-5 p-5 shadow-sm">
+              <h3 className="text-lg font-black text-text tracking-tight uppercase tracking-tight">Tus cuentas pendientes</h3>
               {myShares.length === 0 ? (
-                <p className="text-sm text-text-muted">
-                  No tienes shares pendientes en este evento.
-                </p>
+                <div className="py-4 text-center">
+                  <span className="material-symbols-outlined text-success opacity-20 text-4xl mb-2">verified</span>
+                  <p className="text-sm font-medium text-text-muted italic">
+                    ¡Estás al día! No tienes pagos pendientes aquí.
+                  </p>
+                </div>
               ) : (
-                myShares.map((share) => (
-                  <Link
-                    key={share.id}
-                    to={`/shares/${share.id}`}
-                    className="flex items-start justify-between gap-3 rounded-2xl bg-surface-muted px-4 py-4"
-                  >
-                    <div>
-                      <p className="text-sm font-semibold text-text">{share.expense.title}</p>
-                      <p className="text-sm text-text-muted">{share.status}</p>
-                    </div>
-                    <p className="text-sm font-bold text-primary-strong">
-                      {formatCurrency(share.amount_due)}
-                    </p>
-                  </Link>
-                ))
+                <div className="space-y-3">
+                  {myShares.map((share) => (
+                    <Link
+                      key={share.id}
+                      to={`/shares/${share.id}`}
+                      className="flex items-center justify-between gap-4 rounded-2xl bg-surface-muted/50 border border-border/40 p-4 hover:border-primary/40 transition-colors"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-black uppercase tracking-widest text-text-muted mb-0.5 opacity-60">{share.expense.title}</p>
+                        <StatusBadge status={share.status} size="sm">{share.status.toUpperCase()}</StatusBadge>
+                      </div>
+                      <p className="text-lg font-black text-primary">
+                        {formatCurrency(share.amount_due)}
+                      </p>
+                      <span className="material-symbols-outlined text-text-muted/30">chevron_right</span>
+                    </Link>
+                  ))}
+                </div>
               )}
             </Card>
 
-            <Card className="space-y-3">
-              <h3 className="text-lg font-bold text-text">Pagos por revisar</h3>
+            <Card className="space-y-5 p-5 shadow-sm border-t-4 border-success/30">
+              <h3 className="text-lg font-black text-text tracking-tight">Confirmar recibos</h3>
+              <p className="text-xs font-medium text-text-muted leading-relaxed">Confirma cuando un cómplice te haya pagado para cerrar el saldo.</p>
               {sharesToReview.length === 0 ? (
-                <p className="text-sm text-text-muted">Aún no tienes pagos por confirmar.</p>
+                <p className="text-sm font-medium text-text-muted italic opacity-60 text-center py-2">No hay pagos por revisar por ahora.</p>
               ) : (
-                sharesToReview.map((share) => (
-                  <div key={share.id} className="space-y-3 rounded-2xl bg-surface-muted px-4 py-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold text-text">{share.expense.title}</p>
-                        <p className="text-sm text-text-muted">Estado: {share.status}</p>
+                <div className="space-y-4">
+                  {sharesToReview.map((share) => (
+                    <div key={share.id} className="space-y-4 rounded-2xl bg-surface-muted p-4 border border-border/40">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-black uppercase tracking-widest text-text-muted mb-0.5 opacity-60">{share.expense.title}</p>
+                          <p className="text-sm font-bold text-text">De: {participants.find(p => p.user_id === share.user_id)?.profiles?.display_name}</p>
+                        </div>
+                        <p className="text-lg font-black text-success">
+                          {formatCurrency(share.amount_due)}
+                        </p>
                       </div>
-                      <p className="text-sm font-bold text-primary-strong">
-                        {formatCurrency(share.amount_due)}
-                      </p>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="primary"
+                          className="flex-1 h-10 text-xs font-black uppercase rounded-xl"
+                          onClick={() =>
+                            reviewMutation.mutate({ shareId: share.id, action: "confirmed" })
+                          }
+                        >
+                          Lo recibí
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          className="flex-none w-20 h-10 text-xs font-black uppercase rounded-xl border-danger/20 text-danger"
+                          onClick={() =>
+                            reviewMutation.mutate({ shareId: share.id, action: "rejected" })
+                          }
+                        >
+                          No
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="secondary"
-                        className="flex-1"
-                        onClick={() =>
-                          reviewMutation.mutate({ shareId: share.id, action: "confirmed" })
-                        }
-                      >
-                        Confirmar
-                      </Button>
-                      <Button
-                        variant="danger"
-                        className="flex-1"
-                        onClick={() =>
-                          reviewMutation.mutate({ shareId: share.id, action: "rejected" })
-                        }
-                      >
-                        Rechazar
-                      </Button>
-                    </div>
-                  </div>
-                ))
+                  ))}
+                </div>
               )}
             </Card>
           </div>
@@ -649,38 +681,43 @@ export function EventDetailPage() {
 
         {/* ACTIVIDAD */}
         {activeTab === "actividad" && (
-          <div className="space-y-3">
+          <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-400">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted px-1 mb-4 text-center">Línea del tiempo del plan</p>
             {activity.length === 0 ? (
               <EmptyState
                 icon="history"
-                title="Sin actividad todavía"
-                description="Las acciones de regalo, gastos y pagos aparecerán aquí."
+                title="Comenzando..."
+                description="Aquí verás cada paso que den los cómplices para esta sorpresa."
               />
             ) : (
-              activity.map((entry) => (
-                <div
-                  key={entry.id}
-                  className="flex items-start gap-3 rounded-2xl bg-surface px-4 py-3 shadow-card"
-                >
-                  <div className="flex size-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/12">
-                    <span
-                      className="material-symbols-outlined text-[1rem] text-primary"
-                      style={{ fontVariationSettings: "'FILL' 1" }}
-                    >
-                      history
-                    </span>
+              <div className="relative space-y-4 before:absolute before:inset-y-0 before:left-8 before:w-0.5 before:bg-border/30">
+                {activity.map((entry) => (
+                  <div
+                    key={entry.id}
+                    className="flex items-start gap-4"
+                  >
+                    <div className="relative z-10 flex size-16 flex-shrink-0 items-center justify-center rounded-2xl bg-surface border border-border/40 shadow-sm text-primary">
+                      <span
+                        className="material-symbols-outlined text-[1.4rem]"
+                        style={{ fontVariationSettings: "'FILL' 1" }}
+                      >
+                        {entry.action_type.includes('regalo') ? 'redeem' : entry.action_type.includes('gasto') ? 'payments' : 'history'}
+                      </span>
+                    </div>
+                    <div className="pt-2 flex-1">
+                      <p className="text-sm font-bold text-text leading-tight">{entry.action_type}</p>
+                      <p className="text-[10px] font-black text-text-muted uppercase tracking-wider mt-1 opacity-50">
+                        {formatDate(entry.created_at, {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          day: "numeric",
+                          month: "short"
+                        })}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-semibold text-text">{entry.action_type}</p>
-                    <p className="text-xs text-text-muted">
-                      {formatDate(entry.created_at, {
-                        hour: "2-digit",
-                        minute: "2-digit"
-                      })}
-                    </p>
-                  </div>
-                </div>
-              ))
+                ))}
+              </div>
             )}
           </div>
         )}
