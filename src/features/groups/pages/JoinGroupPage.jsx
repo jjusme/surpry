@@ -13,55 +13,97 @@ export function JoinGroupPage() {
   const navigate = useNavigate();
   const { token } = useParams();
   const { user, isSupabaseConfigured } = useAuth();
+
   const inviteQuery = useQuery({
     queryKey: ["invite", token],
     queryFn: () => getInviteByToken(token),
     enabled: Boolean(token && isSupabaseConfigured)
   });
+
   const acceptMutation = useMutation({
     mutationFn: () => acceptInvite(token),
     onSuccess: (groupId) => navigate(`/grupos/${groupId}`, { replace: true })
   });
 
   if (inviteQuery.isLoading) {
-    return <LoadingState message="Validando invitacion..." fullScreen />;
+    return <LoadingState message="Validando credenciales de acceso..." fullScreen />;
   }
 
-  if (inviteQuery.error) {
+  if (inviteQuery.error || (inviteQuery.isSuccess && !inviteQuery.data)) {
     return (
       <div className="app-frame flex items-center px-4">
         <ErrorState
-          title="No pudimos validar esta invitacion"
-          description={inviteQuery.error.message}
+          title="Invitación no válida"
+          description={inviteQuery.error?.message || "Este enlace de invitación ha expirado o no existe."}
           onRetry={inviteQuery.refetch}
         />
       </div>
     );
   }
 
+  const group = inviteQuery.data?.groups;
+
   return (
-    <AppShell hideNav header={<PageHeader title="Invitacion" subtitle="Grupo" />}>
-      <div className="space-y-4 pt-6">
-        <Card className="space-y-4 text-center">
-          <div>
-            <h2 className="text-2xl font-bold text-text">{inviteQuery.data?.groups?.name || "Invitacion de grupo"}</h2>
-            <p className="mt-2 text-sm text-text-muted">
-              Usa este link para unirte al grupo y empezar a coordinar eventos secretos.
-            </p>
+    <AppShell hideNav header={<PageHeader title="Invitación" subtitle="Nueva Misión" />}>
+      <div className="space-y-6 pt-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="flex flex-col items-center text-center gap-4">
+          <div className="flex size-20 items-center justify-center rounded-[1.75rem] bg-primary/15 shadow-float">
+            <span className="material-symbols-outlined text-[2.5rem] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>
+              security
+            </span>
           </div>
+          <div className="space-y-2">
+            <p className="text-xs font-black uppercase tracking-[0.24em] text-primary">Solicitud de Acceso</p>
+            <h1 className="text-3xl font-black tracking-tight text-text">
+              {group?.name || "Grupo Secreto"}
+            </h1>
+          </div>
+        </div>
+
+        <Card className="p-6 text-center space-y-6 shadow-2xl border-t-4 border-primary">
+          <p className="text-sm leading-relaxed text-text-muted px-2">
+            Has sido invitado a unirte a este equipo de agentes para coordinar eventos sorpresa sin que el objetivo se entere.
+          </p>
+
           {!user ? (
-            <div className="space-y-3">
-              <p className="text-sm text-text-muted">Necesitas iniciar sesion para aceptar la invitacion.</p>
-              <Link to="/login">
-                <Button className="w-full">Ir a login</Button>
-              </Link>
+            <div className="space-y-4 pt-2">
+              <div className="rounded-2xl bg-surface-muted p-4 border border-border/50">
+                <p className="text-xs font-bold text-text-muted">
+                  Protocolo de seguridad: Necesitas una cuenta de agente para continuar.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Button asChild variant="secondary" size="lg">
+                  <Link to="/login">Entrar</Link>
+                </Button>
+                <Button asChild size="lg">
+                  <Link to="/registro">Registrarme</Link>
+                </Button>
+              </div>
             </div>
           ) : (
-            <Button className="w-full" onClick={() => acceptMutation.mutate()} disabled={acceptMutation.isPending}>
-              {acceptMutation.isPending ? "Uniendote..." : "Unirme al grupo"}
-            </Button>
+            <div className="space-y-4">
+              <div className="flex items-center justify-center gap-2 text-success font-bold text-xs uppercase tracking-wider">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-success"></span>
+                </span>
+                Agente Autenticado
+              </div>
+              <Button
+                className="w-full h-14 text-lg font-black tracking-wide shadow-lg active:scale-95 transition-all"
+                onClick={() => acceptMutation.mutate()}
+                disabled={acceptMutation.isPending}
+              >
+                {acceptMutation.isPending ? "Procesando Acceso..." : "Aceptar Misión"}
+              </Button>
+            </div>
           )}
         </Card>
+
+        <p className="text-center text-[10px] font-bold text-text-muted/40 uppercase tracking-[0.2em]">
+          Surpry Intelligence Agency · Top Secret
+        </p>
       </div>
     </AppShell>
   );

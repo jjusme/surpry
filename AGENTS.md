@@ -28,6 +28,32 @@ Vercel
 - Keep forms explicit and readable.
 - Add comments only when logic is not obvious.
 
+## Design system
+- Colors from CSS tokens in `src/styles/tokens.css` — use Tailwind aliases (primary, surface, bg, text-muted, etc.)
+- Typography: Plus Jakarta Sans, font-size via Tailwind (text-sm / text-base / text-lg / text-2xl)
+- Radius: rounded-2xl (cards), rounded-3xl (large cards), rounded-full (pills/avatars)
+- Shadows: shadow-card (elevation), shadow-float (teal glow for primary actions)
+- Icons: Material Symbols Outlined, 1rem/1.25rem/1.4rem/1.5rem sizes. Use fontVariationSettings "'FILL' 1" for filled icons.
+
+## UI components (src/components/ui/)
+- `Button` — variants: primary / secondary / ghost / danger. Sizes: sm / md / lg / pill (full-width rounded-full CTA)
+- `Avatar` — props: name, url, className, ring (teal gradient ring), badge (overlay slot for edit icons etc.)
+- `Card` — rounded-3xl with shadow-card
+- `ProgressBar` — props: value (0-100), label, rightLabel
+- `AvatarStack` — props: users[{name, avatar_url}], max
+- `CountdownTimer` — props: targetDate (ISO string), renders DD/HRS/MIN/SEG chips
+- `StatusBadge` — maps event/share statuses to colored badges
+- `FormField`, `Input`, `Select`, `TextArea` — standard form primitives
+
+## Layout components (src/components/layout/)
+- `AppShell` — wraps page content with BottomNav; props: activeTab, header, hideNav, className
+- `BottomNav` — 4 tabs (inicio / grupos / eventos / perfil) with pill active-state highlight
+- `PageHeader` — sticky header; props: title, subtitle, backTo, action (right slot)
+
+## Current build phase
+Phase 2–4: auth, groups, wishlist, events, expenses, reimbursements — core functional.
+Phase 5+: notifications, PWA, performance, and event auto-creation cron job still pending.
+
 ## Done means
 - Code runs locally.
 - No broken routes.

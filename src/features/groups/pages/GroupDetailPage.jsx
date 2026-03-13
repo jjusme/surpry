@@ -13,6 +13,7 @@ import { useAuth } from "../../auth/AuthContext";
 import { createEvent } from "../../events/service";
 import { createGroupInvite, getGroupDetail } from "../service";
 import { formatBirthday, formatDate } from "../../../utils/format";
+import { cn } from "../../../utils/cn";
 
 export function GroupDetailPage() {
   const { groupId } = useParams();
@@ -20,19 +21,21 @@ export function GroupDetailPage() {
   const { user, isSupabaseConfigured } = useAuth();
   const [selectedBirthdayUser, setSelectedBirthdayUser] = useState("");
   const [inviteUrl, setInviteUrl] = useState("");
+  const [copySuccess, setCopySuccess] = useState(false);
   const [serverError, setServerError] = useState("");
+
   const detailQuery = useQuery({
     queryKey: ["group-detail", groupId],
     queryFn: () => getGroupDetail(groupId),
     enabled: Boolean(groupId && isSupabaseConfigured)
   });
+
   const inviteMutation = useMutation({
     mutationFn: () => createGroupInvite(groupId, user.id),
-    onSuccess: (invite) => {
-      setInviteUrl(`${window.location.origin}/join/${invite.token}`);
-    },
+    onSuccess: (invite) => setInviteUrl(`${window.location.origin}/join/${invite.token}`),
     onError: (error) => setServerError(error.message)
   });
+
   const eventMutation = useMutation({
     mutationFn: () => createEvent(groupId, selectedBirthdayUser),
     onSuccess: async () => {
@@ -45,15 +48,25 @@ export function GroupDetailPage() {
     onError: (error) => setServerError(error.message)
   });
 
+  const handleCopyInvite = async () => {
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy!", err);
+    }
+  };
+
   const membersWithBirthday = useMemo(
-    () => (detailQuery.data?.members || []).filter((member) => member.profiles?.birthday_day && member.profiles?.birthday_month),
+    () =>
+      (detailQuery.data?.members || []).filter(
+        (m) => m.profiles?.birthday_day && m.profiles?.birthday_month
+      ),
     [detailQuery.data?.members]
   );
 
-  if (detailQuery.isLoading) {
-    return <LoadingState message="Cargando grupo..." fullScreen />;
-  }
-
+  if (detailQuery.isLoading) return <LoadingState message="Cargando grupo..." fullScreen />;
   if (detailQuery.error) {
     return (
       <div className="app-frame flex items-center px-4">
@@ -71,87 +84,199 @@ export function GroupDetailPage() {
   return (
     <AppShell
       activeTab="grupos"
-      header={<PageHeader title={group.name} subtitle="Grupo" backTo="/grupos" />}
+      header={<PageHeader title="Detalles del grupo" backTo="/grupos" />}
     >
-      <div className="space-y-4 pt-4">
-        <Card className="space-y-4">
-          <div>
-            <p className="text-sm text-text-muted">Anticipacion automatica: {group.auto_create_days_before} dias</p>
-            <p className="text-sm text-text-muted">Miembros: {members.length}</p>
+      <div className="space-y-5 pt-4">
+        {/* Group hero */}
+        <div className="flex flex-col items-center gap-3 py-4 text-center animate-in fade-in zoom-in duration-500">
+          <div className="flex size-24 items-center justify-center rounded-[2rem] bg-gradient-to-br from-primary/30 to-primary/10 shadow-float ring-4 ring-bg">
+            <span
+              className="material-symbols-outlined text-[3rem] text-primary"
+              style={{ fontVariationSettings: "'FILL' 1" }}
+            >
+              groups
+            </span>
           </div>
-          <div className="grid grid-cols-1 gap-3">
-            <Button variant="secondary" onClick={() => inviteMutation.mutate()}>
-              {inviteMutation.isPending ? "Generando link..." : "Generar link de invitacion"}
-            </Button>
-            {inviteUrl ? (
-              <div className="rounded-2xl bg-surface-muted px-4 py-3">
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted">Link de invitacion</p>
-                <p className="mt-2 break-all text-sm text-text">{inviteUrl}</p>
-              </div>
-            ) : null}
+          <div className="space-y-1">
+            <h1 className="text-2xl font-black tracking-tight text-text">{group.name}</h1>
+            <p className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
+              <span className="material-symbols-outlined text-[0.9rem]" style={{ fontVariationSettings: "'FILL' 1" }}>verified_user</span>
+              {members.length} Agente{members.length !== 1 ? "s" : ""}
+            </p>
           </div>
-        </Card>
 
-        <Card className="space-y-4">
-          <div>
-            <h2 className="text-lg font-bold text-text">Crear evento secreto manual</h2>
-            <p className="text-sm text-text-muted">Solo puedes crearlo para alguien distinto a ti y que ya tenga cumpleanos registrado.</p>
-          </div>
-          <Select value={selectedBirthdayUser} onChange={(event) => setSelectedBirthdayUser(event.target.value)}>
-            <option value="">Selecciona a la persona del cumpleanos</option>
-            {membersWithBirthday
-              .filter((member) => member.user_id !== user?.id)
-              .map((member) => (
-                <option key={member.user_id} value={member.user_id}>
-                  {member.profiles?.display_name} · {formatBirthday(member.profiles?.birthday_day, member.profiles?.birthday_month)}
-                </option>
-              ))}
-          </Select>
-          {serverError ? <p className="text-sm font-medium text-danger">{serverError}</p> : null}
-          <Button className="w-full" onClick={() => eventMutation.mutate()} disabled={!selectedBirthdayUser || eventMutation.isPending}>
-            {eventMutation.isPending ? "Creando evento..." : "Crear evento"}
-          </Button>
-        </Card>
-
-        <Card className="space-y-3">
-          <h2 className="text-lg font-bold text-text">Miembros</h2>
-          {members.map((member) => (
-            <div key={member.user_id} className="flex items-center justify-between rounded-2xl bg-surface-muted px-4 py-3">
-              <div className="flex items-center gap-3">
-                <Avatar name={member.profiles?.display_name} url={member.profiles?.avatar_url} />
-                <div>
-                  <p className="text-sm font-semibold text-text">{member.profiles?.display_name || "Miembro"}</p>
-                  <p className="text-sm text-text-muted">{formatBirthday(member.profiles?.birthday_day, member.profiles?.birthday_month)}</p>
+          <div className="w-full mt-2">
+            {!inviteUrl ? (
+              <Button
+                size="pill"
+                className="gap-2 w-full transition-all active:scale-95"
+                onClick={() => inviteMutation.mutate()}
+                disabled={inviteMutation.isPending}
+              >
+                <span className="material-symbols-outlined text-[1.15rem]">add_link</span>
+                {inviteMutation.isPending ? "Generando..." : "Invitar amigos"}
+              </Button>
+            ) : (
+              <div className="relative group overflow-hidden rounded-[1.5rem] bg-surface-muted border border-border/50 p-1.5 flex items-center transition-all hover:border-primary/30 animate-in slide-in-from-bottom-2 duration-300">
+                <div className="flex-1 px-4 text-left overflow-hidden">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted/60 mb-0.5">Link de Invitación</p>
+                  <p className="text-sm font-medium text-text truncate pr-4">
+                    {inviteUrl.replace(/^https?:\/\//, "")}
+                  </p>
                 </div>
+                <button
+                  onClick={handleCopyInvite}
+                  className={cn(
+                    "flex size-11 items-center justify-center rounded-2xl transition-all duration-300 active:scale-90",
+                    copySuccess ? "bg-success text-white" : "bg-primary text-slate-950 hover:bg-primary-strong"
+                  )}
+                >
+                  <span className="material-symbols-outlined text-[1.25rem]">
+                    {copySuccess ? "check" : "content_copy"}
+                  </span>
+                </button>
               </div>
-              <span className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted">{member.role}</span>
-            </div>
-          ))}
-        </Card>
-
-        <Card className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-text">Eventos del grupo</h2>
-            <span className="text-sm text-text-muted">{events.length}</span>
+            )}
           </div>
-          {events.length === 0 ? (
-            <p className="text-sm text-text-muted">Aun no hay eventos secretos creados.</p>
-          ) : (
-            events.map((event) => (
-              <Link key={event.id} to={`/eventos/${event.id}`} className="block rounded-2xl bg-surface-muted px-4 py-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-base font-bold text-text">{event.birthday_profile?.display_name || "Evento"}</p>
-                    <p className="text-sm text-text-muted">{formatDate(event.birthday_date, { day: "numeric", month: "short" })}</p>
+        </div>
+
+        {/* Active missions */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <h2 className="text-lg font-black tracking-tight text-text">Misiones activas</h2>
+              <span className="rounded-full bg-danger/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-danger">
+                TOP SECRET
+              </span>
+            </div>
+          </div>
+
+          {membersWithBirthday.filter((m) => m.user_id !== user?.id).length > 0 && (
+            <Card className="space-y-5 border-l-4 border-primary p-5 shadow-sm">
+              <div>
+                <p className="text-base font-bold text-text">Inicia una nueva misión</p>
+                <p className="text-sm text-text-muted leading-relaxed">
+                  Solo los otros agentes verán esto. El objetivo no recibirá notificaciones.
+                </p>
+              </div>
+              <div className="space-y-4">
+                <Select
+                  className="bg-bg/50"
+                  value={selectedBirthdayUser}
+                  onChange={(e) => setSelectedBirthdayUser(e.target.value)}
+                >
+                  <option value="">Selecciona al Objetivo</option>
+                  {membersWithBirthday
+                    .filter((m) => m.user_id !== user?.id)
+                    .map((m) => (
+                      <option key={m.user_id} value={m.user_id}>
+                        {m.profiles?.display_name} ·{" "}
+                        {formatBirthday(m.profiles?.birthday_day, m.profiles?.birthday_month)}
+                      </option>
+                    ))}
+                </Select>
+                {serverError && (
+                  <p className="text-sm font-medium text-danger bg-danger/5 p-3 rounded-xl border border-danger/20">{serverError}</p>
+                )}
+                <Button
+                  size="pill"
+                  className="w-full h-12 text-base font-bold"
+                  onClick={() => eventMutation.mutate()}
+                  disabled={!selectedBirthdayUser || eventMutation.isPending}
+                >
+                  {eventMutation.isPending ? "Preparando Intel..." : "Activar Misión"}
+                </Button>
+              </div>
+            </Card>
+          )}
+
+          <div className="space-y-3">
+            {events.length === 0 ? (
+              <div className="rounded-[1.5rem] bg-surface-muted/50 border border-dashed border-border p-8 text-center space-y-2">
+                <span className="material-symbols-outlined text-text-muted/30 text-4xl">inventory_2</span>
+                <p className="text-sm text-text-muted font-medium">
+                  No hay misiones activas en este grupo.
+                </p>
+              </div>
+            ) : (
+              events.map((event) => (
+                <Link key={event.id} to={`/eventos/${event.id}`} className="block group">
+                  <div className="flex items-center gap-4 rounded-[1.5rem] bg-surface p-4 shadow-sm border border-transparent transition-all hover:border-primary/20 active:scale-[0.98]">
+                    <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                      <span
+                        className="material-symbols-outlined text-[1.4rem] text-primary"
+                        style={{ fontVariationSettings: "'FILL' 1" }}
+                      >
+                        target
+                      </span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-bold uppercase tracking-wide text-text-muted mb-0.5">OBJETIVO</p>
+                      <p className="text-lg font-black text-text truncate capitalize">
+                        {event.birthday_profile?.display_name || "Desconocido"}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="material-symbols-outlined text-[1rem] text-primary">calendar_today</span>
+                        <p className="text-xs font-bold text-text-muted">
+                          {formatDate(event.birthday_date, { day: "numeric", month: "long" })}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="material-symbols-outlined text-text-muted/40 font-light">chevron_right</span>
                   </div>
-                  <span className="rounded-full bg-primary/12 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-primary-strong">
-                    {event.status}
+                </Link>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Members list */}
+        <div className="space-y-4 pt-4 pb-12">
+          <div className="flex items-center justify-between px-1">
+            <h2 className="text-lg font-black tracking-tight text-text">Equipo de Agentes</h2>
+            <span className="text-xs font-bold text-text-muted">{members.length} conectados</span>
+          </div>
+
+          <div className="grid grid-cols-1 gap-2.5">
+            {members.map((member) => (
+              <div
+                key={member.user_id}
+                className="flex items-center justify-between rounded-2xl bg-surface/50 border border-border/40 px-4 py-3 transition-colors hover:bg-surface"
+              >
+                <div className="flex items-center gap-3">
+                  <Avatar
+                    className="size-10 ring-2 ring-bg"
+                    name={member.profiles?.display_name}
+                    url={member.profiles?.avatar_url}
+                  />
+                  <div>
+                    <p className="text-sm font-bold text-text flex items-center gap-2">
+                      {member.profiles?.display_name || "Agente Anónimo"}
+                      {member.user_id === user?.id && (
+                        <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-primary">Tú</span>
+                      )}
+                    </p>
+                    <p className="text-[11px] font-medium text-text-muted flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[0.9rem] opacity-50">cake</span>
+                      {formatBirthday(
+                        member.profiles?.birthday_day,
+                        member.profiles?.birthday_month
+                      )}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={cn(
+                    "rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-wider",
+                    member.role === 'admin' ? "bg-primary/10 text-primary" : "bg-surface-muted text-text-muted"
+                  )}>
+                    {member.role}
                   </span>
                 </div>
-              </Link>
-            ))
-          )}
-        </Card>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </AppShell>
   );

@@ -11,7 +11,7 @@ import { sendPasswordReset } from "../api";
 import { useAuth } from "../AuthContext";
 
 const schema = z.object({
-  email: z.string().email("Ingresa un correo valido.")
+  email: z.string().email("Ingresa un correo válido.")
 });
 
 export function ForgotPasswordPage() {
@@ -42,13 +42,13 @@ export function ForgotPasswordPage() {
   });
 
   return (
-    <>
-      <div className="space-y-2 px-2">
+    <div className="space-y-8">
+      <div className="space-y-2 text-center">
         <h1 className="text-3xl font-extrabold tracking-tight text-text">
           Recupera tu acceso
         </h1>
         <p className="text-sm leading-6 text-text-muted">
-          Te enviaremos un enlace para restablecer tu contrasena.
+          Te enviaremos un enlace para restablecer tu contraseña.
         </p>
       </div>
 
@@ -67,7 +67,7 @@ export function ForgotPasswordPage() {
 
           <Button
             type="submit"
-            size="lg"
+            size="pill"
             className="w-full"
             disabled={!isSupabaseConfigured || isSubmitting}
           >
@@ -76,11 +76,11 @@ export function ForgotPasswordPage() {
         </form>
 
         <p className="text-center text-sm text-text-muted">
-          <Link className="font-semibold text-primary" to="/login">
-            Volver a iniciar sesion
+          <Link className="font-bold text-primary" to="/login">
+            Volver a iniciar sesión
           </Link>
         </p>
       </Card>
-    </>
+    </div>
   );
 }

@@ -11,6 +11,8 @@ import { TextArea } from "../../../components/ui/TextArea";
 import { FormField } from "../../../components/ui/FormField";
 import { Avatar } from "../../../components/ui/Avatar";
 import { StatusBadge } from "../../../components/ui/StatusBadge";
+import { ProgressBar } from "../../../components/ui/ProgressBar";
+import { CountdownTimer } from "../../../components/ui/CountdownTimer";
 import { LoadingState } from "../../../components/feedback/LoadingState";
 import { ErrorState } from "../../../components/feedback/ErrorState";
 import { EmptyState } from "../../../components/feedback/EmptyState";
@@ -26,14 +28,9 @@ import {
 import { listPaymentDestinations } from "../../profile/service";
 import { EVENT_TABS, EXPENSE_CATEGORIES } from "../../../lib/constants";
 import { formatCurrency, formatDate } from "../../../utils/format";
+import { cn } from "../../../utils/cn";
 
-const initialGiftForm = {
-  title: "",
-  url: "",
-  price_estimate: "",
-  notes: ""
-};
-
+const initialGiftForm = { title: "", url: "", price_estimate: "", notes: "" };
 const initialExpenseForm = {
   title: "",
   description: "",
@@ -75,16 +72,14 @@ export function EventDetailPage() {
 
   const giftStatusMutation = useMutation({
     mutationFn: ({ giftId, status }) => updateGiftStatus(eventId, giftId, status, user.id),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["event-detail", eventId] });
-    },
+    onSuccess: async () =>
+      queryClient.invalidateQueries({ queryKey: ["event-detail", eventId] }),
     onError: (error) => setServerError(error.message)
   });
 
   const expenseMutation = useMutation({
     mutationFn: async (values) => {
       let receiptPath = null;
-
       if (receiptFile) {
         receiptPath = await uploadPrivateFile(
           "expense-receipts",
@@ -92,7 +87,6 @@ export function EventDetailPage() {
           receiptFile
         );
       }
-
       return createExpenseWithShares({
         ...values,
         event_id: eventId,
@@ -111,9 +105,8 @@ export function EventDetailPage() {
 
   const reviewMutation = useMutation({
     mutationFn: ({ shareId, action }) => reviewShare(shareId, action),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["event-detail", eventId] });
-    },
+    onSuccess: async () =>
+      queryClient.invalidateQueries({ queryKey: ["event-detail", eventId] }),
     onError: (error) => setServerError(error.message)
   });
 
@@ -123,49 +116,53 @@ export function EventDetailPage() {
   const activity = detailQuery.data?.activity || [];
   const event = detailQuery.data?.event;
 
+  const totalExpenses = expenses.reduce((acc, e) => acc + Number(e.amount || 0), 0);
+  const priceGoal = gifts.find((g) => g.price_estimate)?.price_estimate || 0;
+  const fundingPct = priceGoal > 0 ? Math.min(100, Math.round((totalExpenses / priceGoal) * 100)) : 0;
+
   const myShares = useMemo(
-    () => expenses.flatMap((expense) => (expense.shares || []).filter((share) => share.user_id === user?.id).map((share) => ({ ...share, expense }))),
+    () =>
+      expenses.flatMap((expense) =>
+        (expense.shares || [])
+          .filter((s) => s.user_id === user?.id)
+          .map((s) => ({ ...s, expense }))
+      ),
     [expenses, user?.id]
   );
 
   const sharesToReview = useMemo(
-    () => expenses.flatMap((expense) => (expense.shares || []).filter((share) => expense.paid_by_user_id === user?.id && share.user_id !== user?.id).map((share) => ({ ...share, expense }))),
+    () =>
+      expenses.flatMap((expense) =>
+        (expense.shares || [])
+          .filter((s) => expense.paid_by_user_id === user?.id && s.user_id !== user?.id)
+          .map((s) => ({ ...s, expense }))
+      ),
     [expenses, user?.id]
   );
 
-  const totalExpenses = expenses.reduce((acc, expense) => acc + Number(expense.amount || 0), 0);
-
-  const toggleParticipant = (participantId) => {
-    setSelectedParticipants((current) =>
-      current.includes(participantId)
-        ? current.filter((id) => id !== participantId)
-        : [...current, participantId]
+  const toggleParticipant = (pid) =>
+    setSelectedParticipants((cur) =>
+      cur.includes(pid) ? cur.filter((id) => id !== pid) : [...cur, pid]
     );
-  };
 
-  const submitGift = async (eventSubmit) => {
-    eventSubmit.preventDefault();
+  const submitGift = async (e) => {
+    e.preventDefault();
     setServerError("");
     await giftMutation.mutateAsync({ ...giftForm, proposed_by: user.id });
   };
 
-  const submitExpense = async (eventSubmit) => {
-    eventSubmit.preventDefault();
+  const submitExpense = async (e) => {
+    e.preventDefault();
     setServerError("");
     if (selectedParticipants.length === 0) {
       setServerError("Selecciona al menos un participante para dividir el gasto.");
       return;
     }
-
-    await expenseMutation.mutateAsync({
-      ...expenseForm,
-      participant_ids: selectedParticipants
-    });
+    await expenseMutation.mutateAsync({ ...expenseForm, participant_ids: selectedParticipants });
   };
 
-  if (detailQuery.isLoading || paymentQuery.isLoading) {
+  if (detailQuery.isLoading || paymentQuery.isLoading)
     return <LoadingState message="Cargando evento..." fullScreen />;
-  }
 
   if (detailQuery.error || paymentQuery.error) {
     return (
@@ -185,191 +182,390 @@ export function EventDetailPage() {
   return (
     <AppShell
       activeTab="eventos"
-      header={<PageHeader title={event?.birthday_profile?.display_name || "Evento secreto"} subtitle="Operacion" backTo="/eventos" />}
+      header={
+        <PageHeader
+          subtitle="Operación"
+          title={event?.birthday_profile?.display_name || "Evento secreto"}
+          backTo="/eventos"
+        />
+      }
     >
       <div className="space-y-4 pt-4">
-        <Card className="space-y-4">
-          <div className="flex items-center gap-4">
-            <Avatar name={event?.birthday_profile?.display_name} url={event?.birthday_profile?.avatar_url} className="size-20 text-lg" />
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-text-muted">Grupo: {event?.groups?.name}</p>
-              <h2 className="text-2xl font-bold text-text">{event?.birthday_profile?.display_name}</h2>
-              <p className="text-sm text-text-muted">Fecha objetivo: {formatDate(event?.birthday_date, { day: "numeric", month: "long" })}</p>
-            </div>
-            <StatusBadge status={event?.status}>{event?.status}</StatusBadge>
+        {/* Hero */}
+        <div className="flex flex-col items-center gap-3 py-4 text-center">
+          <div className="relative">
+            <Avatar
+              name={event?.birthday_profile?.display_name}
+              url={event?.birthday_profile?.avatar_url}
+              className="size-28 text-2xl"
+              ring
+            />
+            <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-primary px-3 py-0.5 text-[10px] font-black uppercase tracking-[0.15em] text-slate-950 shadow-float">
+              Target
+            </span>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-2xl bg-surface-muted px-4 py-3">
-              <p className="text-sm text-text-muted">Participantes</p>
-              <p className="text-xl font-bold text-text">{participants.length}</p>
-            </div>
-            <div className="rounded-2xl bg-surface-muted px-4 py-3">
-              <p className="text-sm text-text-muted">Gastos</p>
-              <p className="text-xl font-bold text-text">{formatCurrency(totalExpenses)}</p>
+          <div className="mt-3 space-y-1">
+            <h2 className="text-2xl font-extrabold text-text">
+              {event?.birthday_profile?.display_name}
+            </h2>
+            <p className="text-sm italic text-text-muted">"¡Shhh! Es una misión secreta."</p>
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-surface-muted px-3 py-1.5">
+              <span
+                className="material-symbols-outlined text-[1rem] text-primary"
+                style={{ fontVariationSettings: "'FILL' 1" }}
+              >
+                calendar_month
+              </span>
+              <span className="text-xs font-bold text-text">
+                Fecha objetivo:{" "}
+                {formatDate(event?.birthday_date, { day: "numeric", month: "short" }).toUpperCase()}
+              </span>
             </div>
           </div>
-        </Card>
 
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          {EVENT_TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              className={`rounded-full px-4 py-2 text-sm font-semibold ${activeTab === tab.id ? "bg-primary text-slate-950" : "bg-surface text-text-muted"}`}
-              onClick={() => setActiveTab(tab.id)}
-            >
-              {tab.label}
-            </button>
-          ))}
+          {/* Countdown */}
+          {event?.birthday_date && (
+            <div className="w-full pt-2">
+              <CountdownTimer targetDate={event.birthday_date} />
+            </div>
+          )}
         </div>
 
-        {serverError ? <p className="text-sm font-medium text-danger">{serverError}</p> : null}
+        {/* Tab bar with underline indicator */}
+        <div className="sticky top-[3.75rem] z-10 -mx-4 border-b border-border bg-bg/95 px-4 backdrop-blur-md">
+          <div className="flex gap-1 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+            {EVENT_TABS.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                className={cn(
+                  "flex-shrink-0 border-b-2 px-4 py-3 text-sm font-semibold transition-colors",
+                  activeTab === tab.id
+                    ? "border-primary text-primary"
+                    : "border-transparent text-text-muted hover:text-text"
+                )}
+                onClick={() => setActiveTab(tab.id)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
 
-        {activeTab === "resumen" ? (
+        {serverError && (
+          <p className="rounded-2xl bg-danger/10 px-4 py-3 text-sm font-medium text-danger">
+            {serverError}
+          </p>
+        )}
+
+        {/* RESUMEN */}
+        {activeTab === "resumen" && (
           <div className="space-y-4">
-            <Card className="space-y-3">
-              <h3 className="text-lg font-bold text-text">Participantes</h3>
-              {participants.map((participant) => (
-                <div key={participant.id} className="flex items-center justify-between rounded-2xl bg-surface-muted px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    <Avatar name={participant.profiles?.display_name} url={participant.profiles?.avatar_url} />
-                    <div>
-                      <p className="text-sm font-semibold text-text">{participant.profiles?.display_name}</p>
-                      <p className="text-sm text-text-muted">{participant.role}</p>
-                    </div>
+            <Card className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted">
+                    Estado de la misión
+                  </p>
+                  <StatusBadge status={event?.status} className="mt-1">
+                    {event?.status}
+                  </StatusBadge>
+                </div>
+                <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/12">
+                  <span
+                    className="material-symbols-outlined text-[1.4rem] text-primary"
+                    style={{ fontVariationSettings: "'FILL' 1" }}
+                  >
+                    target
+                  </span>
+                </div>
+              </div>
+
+              {priceGoal > 0 && (
+                <ProgressBar
+                  label="Financiamiento"
+                  rightLabel={`${formatCurrency(totalExpenses)} / ${formatCurrency(priceGoal)}`}
+                  value={fundingPct}
+                />
+              )}
+            </Card>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted">
+                  Agentes activos
+                </p>
+                <span className="text-xs font-semibold text-primary">{participants.length}</span>
+              </div>
+              {participants.map((p) => (
+                <div
+                  key={p.id}
+                  className="flex items-center gap-3 rounded-2xl bg-surface px-4 py-3 shadow-card"
+                >
+                  <Avatar
+                    name={p.profiles?.display_name}
+                    url={p.profiles?.avatar_url}
+                    className="size-10"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-text">
+                      {p.profiles?.display_name}
+                    </p>
+                    <p className="text-xs uppercase tracking-[0.15em] text-text-muted">{p.role}</p>
+                  </div>
+                  <div className="flex size-7 items-center justify-center rounded-full bg-success/15">
+                    <span
+                      className="material-symbols-outlined text-[1rem] text-success"
+                      style={{ fontVariationSettings: "'FILL' 1" }}
+                    >
+                      check_circle
+                    </span>
                   </div>
                 </div>
               ))}
-            </Card>
-            <Card className="space-y-3">
-              <h3 className="text-lg font-bold text-text">Resumen financiero</h3>
-              <p className="text-sm text-text-muted">Registra varios gastos; Surpry divide shares en partes iguales por los participantes seleccionados.</p>
-            </Card>
+            </div>
           </div>
-        ) : null}
+        )}
 
-        {activeTab === "regalo" ? (
+        {/* REGALO */}
+        {activeTab === "regalo" && (
           <div className="space-y-4">
             <Card className="space-y-4">
               <div>
                 <h3 className="text-lg font-bold text-text">Proponer regalo</h3>
-                <p className="text-sm text-text-muted">Puedes traer una idea nueva o tomar referencia de la wishlist del cumpleanero.</p>
+                <p className="text-sm text-text-muted">
+                  Idea nueva o referencia de la wishlist del cumpleañero.
+                </p>
               </div>
               <form className="space-y-4" onSubmit={submitGift}>
-                <FormField label="Titulo">
-                  <Input value={giftForm.title} onChange={(event) => setGiftForm((current) => ({ ...current, title: event.target.value }))} />
+                <FormField label="Título">
+                  <Input
+                    value={giftForm.title}
+                    onChange={(e) => setGiftForm((c) => ({ ...c, title: e.target.value }))}
+                  />
                 </FormField>
                 <FormField label="Link">
-                  <Input value={giftForm.url} onChange={(event) => setGiftForm((current) => ({ ...current, url: event.target.value }))} />
+                  <Input
+                    value={giftForm.url}
+                    onChange={(e) => setGiftForm((c) => ({ ...c, url: e.target.value }))}
+                  />
                 </FormField>
                 <FormField label="Precio estimado">
-                  <Input type="number" value={giftForm.price_estimate} onChange={(event) => setGiftForm((current) => ({ ...current, price_estimate: event.target.value }))} />
+                  <Input
+                    type="number"
+                    value={giftForm.price_estimate}
+                    onChange={(e) =>
+                      setGiftForm((c) => ({ ...c, price_estimate: e.target.value }))
+                    }
+                  />
                 </FormField>
                 <FormField label="Nota">
-                  <TextArea rows={3} value={giftForm.notes} onChange={(event) => setGiftForm((current) => ({ ...current, notes: event.target.value }))} />
+                  <TextArea
+                    rows={2}
+                    value={giftForm.notes}
+                    onChange={(e) => setGiftForm((c) => ({ ...c, notes: e.target.value }))}
+                  />
                 </FormField>
-                <Button type="submit" className="w-full" disabled={giftMutation.isPending || !giftForm.title.trim()}>
+                <Button
+                  type="submit"
+                  size="lg"
+                  className="w-full"
+                  disabled={giftMutation.isPending || !giftForm.title.trim()}
+                >
                   {giftMutation.isPending ? "Guardando..." : "Agregar propuesta"}
                 </Button>
               </form>
             </Card>
+
             {gifts.length === 0 ? (
-              <EmptyState icon="redeem" title="Aun no hay propuestas" description="Agrega la primera opcion de regalo para este evento." />
+              <EmptyState
+                icon="redeem"
+                title="Sin propuestas todavía"
+                description="Agrega la primera opción de regalo para este evento."
+              />
             ) : (
               gifts.map((gift) => (
                 <Card key={gift.id} className="space-y-3">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-lg font-bold text-text">{gift.title}</p>
-                      <p className="text-sm text-text-muted">{gift.notes || "Sin nota"}</p>
-                      {gift.price_estimate ? <p className="text-sm font-semibold text-primary-strong">{formatCurrency(gift.price_estimate)}</p> : null}
+                      <p className="font-bold text-text">{gift.title}</p>
+                      {gift.price_estimate ? (
+                        <p className="text-sm font-semibold text-primary-strong">
+                          {formatCurrency(gift.price_estimate)}
+                        </p>
+                      ) : null}
+                      {gift.notes ? (
+                        <p className="text-sm text-text-muted">{gift.notes}</p>
+                      ) : null}
                     </div>
                     <StatusBadge status={gift.status}>{gift.status}</StatusBadge>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <Button variant="secondary" onClick={() => giftStatusMutation.mutate({ giftId: gift.id, status: "reserved" })}>Reservar</Button>
-                    <Button variant="secondary" onClick={() => giftStatusMutation.mutate({ giftId: gift.id, status: "bought" })}>Marcar comprado</Button>
-                    <Button variant="ghost" onClick={() => giftStatusMutation.mutate({ giftId: gift.id, status: "discarded" })}>Descartar</Button>
+                    <Button
+                      variant="secondary"
+                      size="md"
+                      onClick={() =>
+                        giftStatusMutation.mutate({ giftId: gift.id, status: "reserved" })
+                      }
+                    >
+                      Reservar
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="md"
+                      onClick={() =>
+                        giftStatusMutation.mutate({ giftId: gift.id, status: "bought" })
+                      }
+                    >
+                      Marcar comprado
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="md"
+                      onClick={() =>
+                        giftStatusMutation.mutate({ giftId: gift.id, status: "discarded" })
+                      }
+                    >
+                      Descartar
+                    </Button>
                   </div>
                 </Card>
               ))
             )}
           </div>
-        ) : null}
+        )}
 
-        {activeTab === "gastos" ? (
+        {/* GASTOS */}
+        {activeTab === "gastos" && (
           <div className="space-y-4">
             <Card className="space-y-4">
               <div>
                 <h3 className="text-lg font-bold text-text">Registrar gasto</h3>
-                <p className="text-sm text-text-muted">Cada gasto crea sus propias shares para los participantes seleccionados.</p>
+                <p className="text-sm text-text-muted">
+                  Cada gasto genera shares para los participantes seleccionados.
+                </p>
               </div>
               <form className="space-y-4" onSubmit={submitExpense}>
                 <FormField label="Concepto">
-                  <Input value={expenseForm.title} onChange={(event) => setExpenseForm((current) => ({ ...current, title: event.target.value }))} />
-                </FormField>
-                <FormField label="Descripcion">
-                  <TextArea rows={2} value={expenseForm.description} onChange={(event) => setExpenseForm((current) => ({ ...current, description: event.target.value }))} />
+                  <Input
+                    value={expenseForm.title}
+                    onChange={(e) =>
+                      setExpenseForm((c) => ({ ...c, title: e.target.value }))
+                    }
+                  />
                 </FormField>
                 <div className="grid grid-cols-2 gap-3">
-                  <FormField label="Categoria">
-                    <Select value={expenseForm.category} onChange={(event) => setExpenseForm((current) => ({ ...current, category: event.target.value }))}>
-                      {EXPENSE_CATEGORIES.map((category) => (
-                        <option key={category.value} value={category.value}>{category.label}</option>
+                  <FormField label="Categoría">
+                    <Select
+                      value={expenseForm.category}
+                      onChange={(e) =>
+                        setExpenseForm((c) => ({ ...c, category: e.target.value }))
+                      }
+                    >
+                      {EXPENSE_CATEGORIES.map((cat) => (
+                        <option key={cat.value} value={cat.value}>
+                          {cat.label}
+                        </option>
                       ))}
                     </Select>
                   </FormField>
                   <FormField label="Monto">
-                    <Input type="number" value={expenseForm.amount} onChange={(event) => setExpenseForm((current) => ({ ...current, amount: event.target.value }))} />
+                    <Input
+                      type="number"
+                      value={expenseForm.amount}
+                      onChange={(e) =>
+                        setExpenseForm((c) => ({ ...c, amount: e.target.value }))
+                      }
+                    />
                   </FormField>
                 </div>
-                <FormField label="Metodo para recibir reembolso">
-                  <Select value={expenseForm.reimbursement_destination_id} onChange={(event) => setExpenseForm((current) => ({ ...current, reimbursement_destination_id: event.target.value }))}>
-                    <option value="">Sin metodo asociado</option>
+                <FormField label="Método de reembolso">
+                  <Select
+                    value={expenseForm.reimbursement_destination_id}
+                    onChange={(e) =>
+                      setExpenseForm((c) => ({
+                        ...c,
+                        reimbursement_destination_id: e.target.value
+                      }))
+                    }
+                  >
+                    <option value="">Sin método asociado</option>
                     {paymentQuery.data.map((item) => (
-                      <option key={item.id} value={item.id}>{item.label || item.type}</option>
+                      <option key={item.id} value={item.id}>
+                        {item.label || item.type}
+                      </option>
                     ))}
                   </Select>
                 </FormField>
                 <div className="space-y-2">
                   <p className="text-sm font-semibold text-text">Participantes del split</p>
-                  <div className="grid grid-cols-1 gap-2">
-                    {participants.map((participant) => (
-                      <label key={participant.id} className="flex items-center gap-3 rounded-2xl bg-surface-muted px-4 py-3 text-sm text-text">
-                        <input type="checkbox" checked={selectedParticipants.includes(participant.user_id)} onChange={() => toggleParticipant(participant.user_id)} />
-                        <span>{participant.profiles?.display_name}</span>
-                      </label>
-                    ))}
-                  </div>
+                  {participants.map((p) => (
+                    <label
+                      key={p.id}
+                      className="flex items-center gap-3 rounded-2xl bg-surface-muted px-4 py-3 text-sm text-text"
+                    >
+                      <input
+                        type="checkbox"
+                        className="size-4 accent-primary"
+                        checked={selectedParticipants.includes(p.user_id)}
+                        onChange={() => toggleParticipant(p.user_id)}
+                      />
+                      <span>{p.profiles?.display_name}</span>
+                    </label>
+                  ))}
                 </div>
-                <FormField label="Comprobante">
-                  <Input type="file" onChange={(event) => setReceiptFile(event.target.files?.[0] || null)} />
+                <FormField label="Comprobante (opcional)">
+                  <Input
+                    type="file"
+                    onChange={(e) => setReceiptFile(e.target.files?.[0] || null)}
+                  />
                 </FormField>
-                <Button type="submit" className="w-full" disabled={expenseMutation.isPending || !expenseForm.title.trim() || !expenseForm.amount}>
+                <Button
+                  type="submit"
+                  size="lg"
+                  className="w-full"
+                  disabled={
+                    expenseMutation.isPending || !expenseForm.title.trim() || !expenseForm.amount
+                  }
+                >
                   {expenseMutation.isPending ? "Guardando gasto..." : "Registrar gasto"}
                 </Button>
               </form>
             </Card>
+
             {expenses.length === 0 ? (
-              <EmptyState icon="payments" title="Todavia no hay gastos" description="Registra el primero para repartir costos y generar shares." />
+              <EmptyState
+                icon="payments"
+                title="Sin gastos todavía"
+                description="Registra el primero para repartir costos y generar shares."
+              />
             ) : (
               expenses.map((expense) => (
                 <Card key={expense.id} className="space-y-3">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-lg font-bold text-text">{expense.title}</p>
-                      <p className="text-sm text-text-muted">{expense.category}</p>
+                      <p className="font-bold text-text">{expense.title}</p>
+                      <p className="text-xs uppercase tracking-[0.15em] text-text-muted">
+                        {expense.category}
+                      </p>
                     </div>
-                    <p className="text-base font-bold text-primary-strong">{formatCurrency(expense.amount)}</p>
+                    <p className="text-base font-bold text-primary-strong">
+                      {formatCurrency(expense.amount)}
+                    </p>
                   </div>
-                  {expense.description ? <p className="text-sm text-text-muted">{expense.description}</p> : null}
                   <div className="rounded-2xl bg-surface-muted px-4 py-3">
-                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted">Shares</p>
-                    <div className="mt-2 space-y-2">
+                    <p className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-text-muted">
+                      Shares
+                    </p>
+                    <div className="space-y-2">
                       {(expense.shares || []).map((share) => (
                         <div key={share.id} className="flex items-center justify-between text-sm">
-                          <span className="text-text-muted">{share.user_id === user?.id ? "Tu parte" : share.user_id}</span>
-                          <span className="font-semibold text-text">{formatCurrency(share.amount_due)} · {share.status}</span>
+                          <span className="text-text-muted">
+                            {share.user_id === user?.id ? "Tu parte" : share.user_id}
+                          </span>
+                          <span className="font-semibold text-text">
+                            {formatCurrency(share.amount_due)} · {share.status}
+                          </span>
                         </div>
                       ))}
                     </div>
@@ -378,32 +574,40 @@ export function EventDetailPage() {
               ))
             )}
           </div>
-        ) : null}
+        )}
 
-        {activeTab === "pagos" ? (
+        {/* PAGOS */}
+        {activeTab === "pagos" && (
           <div className="space-y-4">
             <Card className="space-y-3">
               <h3 className="text-lg font-bold text-text">Tus shares</h3>
               {myShares.length === 0 ? (
-                <p className="text-sm text-text-muted">No tienes shares pendientes en este evento.</p>
+                <p className="text-sm text-text-muted">
+                  No tienes shares pendientes en este evento.
+                </p>
               ) : (
                 myShares.map((share) => (
-                  <Link key={share.id} to={`/shares/${share.id}`} className="block rounded-2xl bg-surface-muted px-4 py-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold text-text">{share.expense.title}</p>
-                        <p className="text-sm text-text-muted">{share.status}</p>
-                      </div>
-                      <p className="text-sm font-bold text-primary-strong">{formatCurrency(share.amount_due)}</p>
+                  <Link
+                    key={share.id}
+                    to={`/shares/${share.id}`}
+                    className="flex items-start justify-between gap-3 rounded-2xl bg-surface-muted px-4 py-4"
+                  >
+                    <div>
+                      <p className="text-sm font-semibold text-text">{share.expense.title}</p>
+                      <p className="text-sm text-text-muted">{share.status}</p>
                     </div>
+                    <p className="text-sm font-bold text-primary-strong">
+                      {formatCurrency(share.amount_due)}
+                    </p>
                   </Link>
                 ))
               )}
             </Card>
+
             <Card className="space-y-3">
               <h3 className="text-lg font-bold text-text">Pagos por revisar</h3>
               {sharesToReview.length === 0 ? (
-                <p className="text-sm text-text-muted">Aun no tienes pagos por confirmar.</p>
+                <p className="text-sm text-text-muted">Aún no tienes pagos por confirmar.</p>
               ) : (
                 sharesToReview.map((share) => (
                   <div key={share.id} className="space-y-3 rounded-2xl bg-surface-muted px-4 py-4">
@@ -412,13 +616,27 @@ export function EventDetailPage() {
                         <p className="text-sm font-semibold text-text">{share.expense.title}</p>
                         <p className="text-sm text-text-muted">Estado: {share.status}</p>
                       </div>
-                      <p className="text-sm font-bold text-primary-strong">{formatCurrency(share.amount_due)}</p>
+                      <p className="text-sm font-bold text-primary-strong">
+                        {formatCurrency(share.amount_due)}
+                      </p>
                     </div>
                     <div className="flex gap-2">
-                      <Button variant="secondary" className="flex-1" onClick={() => reviewMutation.mutate({ shareId: share.id, action: "confirmed" })}>
+                      <Button
+                        variant="secondary"
+                        className="flex-1"
+                        onClick={() =>
+                          reviewMutation.mutate({ shareId: share.id, action: "confirmed" })
+                        }
+                      >
                         Confirmar
                       </Button>
-                      <Button variant="danger" className="flex-1" onClick={() => reviewMutation.mutate({ shareId: share.id, action: "rejected" })}>
+                      <Button
+                        variant="danger"
+                        className="flex-1"
+                        onClick={() =>
+                          reviewMutation.mutate({ shareId: share.id, action: "rejected" })
+                        }
+                      >
                         Rechazar
                       </Button>
                     </div>
@@ -427,23 +645,45 @@ export function EventDetailPage() {
               )}
             </Card>
           </div>
-        ) : null}
+        )}
 
-        {activeTab === "actividad" ? (
+        {/* ACTIVIDAD */}
+        {activeTab === "actividad" && (
           <div className="space-y-3">
             {activity.length === 0 ? (
-              <EmptyState icon="history" title="Sin actividad todavia" description="Las acciones de regalo, gastos y pagos apareceran aqui." />
+              <EmptyState
+                icon="history"
+                title="Sin actividad todavía"
+                description="Las acciones de regalo, gastos y pagos aparecerán aquí."
+              />
             ) : (
               activity.map((entry) => (
-                <Card key={entry.id} className="space-y-2">
-                  <p className="text-sm font-semibold text-text">{entry.action_type}</p>
-                  <p className="text-sm text-text-muted">{formatDate(entry.created_at, { hour: "2-digit", minute: "2-digit" })}</p>
-                  {entry.metadata ? <pre className="overflow-x-auto rounded-2xl bg-surface-muted p-3 text-xs text-text-muted">{JSON.stringify(entry.metadata, null, 2)}</pre> : null}
-                </Card>
+                <div
+                  key={entry.id}
+                  className="flex items-start gap-3 rounded-2xl bg-surface px-4 py-3 shadow-card"
+                >
+                  <div className="flex size-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/12">
+                    <span
+                      className="material-symbols-outlined text-[1rem] text-primary"
+                      style={{ fontVariationSettings: "'FILL' 1" }}
+                    >
+                      history
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-text">{entry.action_type}</p>
+                    <p className="text-xs text-text-muted">
+                      {formatDate(entry.created_at, {
+                        hour: "2-digit",
+                        minute: "2-digit"
+                      })}
+                    </p>
+                  </div>
+                </div>
               ))
             )}
           </div>
-        ) : null}
+        )}
       </div>
     </AppShell>
   );
