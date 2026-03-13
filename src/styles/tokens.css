@@ -1,0 +1,40 @@
+﻿@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap");
+
+:root,
+[data-theme="surpry"] {
+  --color-bg: 243 247 248;
+  --color-bg-elevated: 255 255 255;
+  --color-surface: 255 255 255;
+  --color-surface-muted: 232 244 245;
+  --color-text: 17 24 39;
+  --color-text-muted: 100 116 139;
+  --color-primary: 13 242 242;
+  --color-primary-strong: 0 201 201;
+  --color-border: 221 232 235;
+  --color-success: 34 197 94;
+  --color-warning: 245 158 11;
+  --color-danger: 239 68 68;
+
+  --radius-sm: 0.75rem;
+  --radius-md: 1rem;
+  --radius-lg: 1.25rem;
+  --radius-xl: 1.75rem;
+
+  --shadow-card: 0 18px 40px rgba(15, 23, 42, 0.08);
+  --shadow-float: 0 12px 28px rgba(13, 242, 242, 0.24);
+}
+
+[data-theme="dark"] {
+  --color-bg: 11 18 24;
+  --color-bg-elevated: 15 23 32;
+  --color-surface: 17 25 34;
+  --color-surface-muted: 21 33 44;
+  --color-text: 241 245 249;
+  --color-text-muted: 148 163 184;
+  --color-primary: 13 242 242;
+  --color-primary-strong: 0 201 201;
+  --color-border: 38 54 69;
+  --color-success: 34 197 94;
+  --color-warning: 245 158 11;
+  --color-danger: 248 113 113;
+}
