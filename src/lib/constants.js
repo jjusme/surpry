@@ -40,5 +40,6 @@ export const EVENT_TABS = [
   { id: "regalo", label: "Regalo" },
   { id: "gastos", label: "Gastos" },
   { id: "pagos", label: "Pagos" },
-  { id: "actividad", label: "Actividad" }
+  { id: "actividad", label: "Actividad" },
+  { id: "chat", label: "Chat" }
 ];

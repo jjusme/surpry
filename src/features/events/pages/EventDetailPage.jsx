@@ -19,6 +19,7 @@ import { ErrorState } from "../../../components/feedback/ErrorState";
 import { EmptyState } from "../../../components/feedback/EmptyState";
 import { useAuth } from "../../auth/AuthContext";
 import { requireSupabase } from "../../../lib/supabase";
+import { EventChatTab } from "../components/EventChatTab";
 import {
   addGiftOption,
   createExpenseWithShares,
@@ -79,6 +80,9 @@ export function EventDetailPage() {
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'expense_shares' }, () => {
         queryClient.invalidateQueries({ queryKey: ["event-detail", eventId] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'event_messages', filter: `event_id=eq.${eventId}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ["event-messages", eventId] });
       })
       .subscribe();
 
@@ -743,6 +747,13 @@ export function EventDetailPage() {
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* CHAT */}
+        {activeTab === "chat" && (
+          <div className="animate-in fade-in slide-in-from-bottom-2 duration-400">
+            <EventChatTab eventId={eventId} />
           </div>
         )}
       </div>

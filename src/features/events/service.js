@@ -293,3 +293,44 @@ async function appendActivity(eventId, actorUserId, actionType, targetType, targ
     metadata
   });
 }
+
+export async function listEventMessages(eventId) {
+  const supabase = requireSupabase();
+  const { data, error } = await supabase
+    .from("event_messages")
+    .select(`
+      *,
+      profiles (
+        id,
+        display_name,
+        avatar_url
+      )
+    `)
+    .eq("event_id", eventId)
+    .order("created_at", { ascending: true })
+    .limit(200);
+
+  if (error) {
+    throw error;
+  }
+  return data ?? [];
+}
+
+export async function sendEventMessage(eventId, message, userId) {
+  if (!message || message.trim() === "") return;
+  const supabase = requireSupabase();
+  const { data, error } = await supabase
+    .from("event_messages")
+    .insert({
+      event_id: eventId,
+      user_id: userId,
+      message: message.trim()
+    })
+    .select("*")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+  return data;
+}
