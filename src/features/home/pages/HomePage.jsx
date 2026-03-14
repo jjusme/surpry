@@ -196,19 +196,27 @@ export function HomePage() {
       <div className="space-y-6 pt-4 pb-12">
         {/* Pending payment banner */}
         {sharesQuery.data.length > 0 && (
-          <div className="flex items-center gap-4 rounded-[2rem] bg-gradient-to-br from-primary/20 to-primary/5 px-5 py-5 border border-primary/20 shadow-sm animate-in fade-in slide-in-from-top-4 duration-500">
-            <div className="flex size-14 flex-shrink-0 items-center justify-center rounded-2xl bg-white shadow-badge">
-              <span className="material-symbols-outlined text-[1.6rem] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>
-                payments
-              </span>
+          <div className="relative overflow-hidden rounded-[2rem] bg-slate-900 p-[1px] shadow-xl animate-in fade-in slide-in-from-top-6 duration-700">
+            <div className="flex items-center gap-4 rounded-[1.95rem] bg-gradient-to-br from-slate-800 to-slate-900 px-5 py-5">
+              <div className="flex size-12 flex-shrink-0 items-center justify-center rounded-xl bg-primary shadow-[0_0_20px_rgba(13,242,242,0.4)]">
+                <span className="material-symbols-outlined text-[1.4rem] text-slate-950" style={{ fontVariationSettings: "'FILL' 1" }}>
+                  payments
+                </span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-black text-primary/60 uppercase tracking-[0.2em] mb-0.5">Pendiente</p>
+                <h3 className="text-lg font-black text-white leading-none">
+                  {formatCurrency(sharesQuery.data.reduce((acc, s) => acc + Number(s.amount_due || 0), 0))}
+                </h3>
+              </div>
+              <Button 
+                size="md" 
+                className="h-10 px-5 font-black text-[11px] uppercase tracking-wider shadow-lg bg-primary text-slate-900 hover:bg-primary-strong border-none rounded-full" 
+                onClick={() => navigate(`/shares/${sharesQuery.data[0].id}`)}
+              >
+                Pagar ya
+              </Button>
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-black text-text uppercase tracking-tight">Saldos pendientes</p>
-              <p className="truncate text-sm text-text-muted font-medium mt-0.5">
-                Debes {formatCurrency(sharesQuery.data.reduce((acc, s) => acc + Number(s.amount_due || 0), 0))}
-              </p>
-            </div>
-            <Button size="pill" variant="pill" className="h-10 px-6 font-black text-xs uppercase" onClick={() => navigate(`/shares/${sharesQuery.data[0].id}`)}>Liquidar</Button>
           </div>
         )}
 
@@ -287,36 +295,55 @@ export function HomePage() {
               const participants = event.participants || [];
 
               return (
-                <Link key={event.id} to={`/eventos/${event.id}`} className="block">
-                  <Card className="space-y-4 hover:border-primary/20 transition-colors">
-                    <div className="flex items-start justify-between gap-3">
+                <Link key={event.id} to={`/eventos/${event.id}`} className="block transform active:scale-[0.97] transition-all">
+                  <Card className="p-5 space-y-5 hover:shadow-lg transition-shadow rounded-3xl border-none ring-1 ring-black/5 bg-white">
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="flex size-12 flex-shrink-0 items-center justify-center rounded-2xl bg-primary/10">
-                          <span className="material-symbols-outlined text-[1.4rem] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>
+                          <span className="material-symbols-outlined text-[1.5rem] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>
                             celebration
                           </span>
                         </div>
-                        <div>
-                          <p className="font-black text-text">Para {event.birthday_profile?.display_name?.split(" ")[0] || "Alguien"}</p>
-                          <p className="text-xs font-bold text-text-muted uppercase tracking-wider">
-                            {event.groups?.name} · {participants.length} Cómplices
+                        <div className="min-w-0">
+                          <h3 className="text-lg font-black text-text truncate">Para {event.birthday_profile?.display_name?.split(" ")[0] || "Alguien"}</h3>
+                          <p className="text-[10px] font-bold text-text-muted truncate uppercase tracking-wider">
+                            {event.groups?.name}
                           </p>
                         </div>
                       </div>
                       <StatusBadge status={event.status} />
                     </div>
 
-                    {priceEstimate > 0 && (
-                      <ProgressBar label="Fondo recolectado" rightLabel={`${progress}%`} value={progress} />
-                    )}
+                    <div className="space-y-3">
+                      {priceEstimate > 0 ? (
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider">
+                            <span className="text-text-muted">Progreso</span>
+                            <span className="text-primary">{progress}%</span>
+                          </div>
+                          <div className="h-2 w-full bg-surface-muted rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-primary transition-all duration-1000 ease-out"
+                              style={{ width: `${progress}%` }}
+                            />
+                          </div>
+                        </div>
+                      ) : null}
 
-                    <div className="flex items-center justify-between">
-                      <AvatarStack users={participants.map((p) => ({ id: p.user_id, name: p.profiles?.display_name, avatar_url: p.profiles?.avatar_url }))} max={3} />
-                      {priceEstimate > 0 && (
-                        <p className="text-xs font-black text-text-muted">
-                          Objetivo: <span className="text-text">{formatCurrency(priceEstimate)}</span>
-                        </p>
-                      )}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <AvatarStack 
+                            users={participants.map((p) => ({ id: p.user_id, name: p.profiles?.display_name, avatar_url: p.profiles?.avatar_url }))} 
+                            max={3} 
+                          />
+                          <span className="text-[10px] font-black text-text-muted uppercase">{participants.length} Cómplices</span>
+                        </div>
+                        {priceEstimate > 0 && (
+                          <p className="text-[11px] font-black text-text">
+                            {formatCurrency(priceEstimate)}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </Card>
                 </Link>

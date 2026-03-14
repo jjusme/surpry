@@ -1,4 +1,4 @@
-﻿import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { AppShell } from "../../../components/layout/AppShell";
 import { PageHeader } from "../../../components/layout/PageHeader";
@@ -110,19 +110,19 @@ export function ProfilePage() {
     >
       <div className="space-y-6 pt-4">
         {/* Profile hero */}
-        <div className="flex flex-col items-center gap-3 py-2">
+        <div className="flex flex-col items-center gap-4 py-4 px-4 bg-gradient-to-b from-primary/10 to-transparent rounded-[3rem] -mx-2">
           <Avatar
             name={displayName}
             url={profile?.avatar_url}
-            className="size-28 text-2xl"
+            className="size-28 text-2xl shadow-xl ring-offset-4 ring-offset-bg"
             ring
             badge={
               <button
                 onClick={() => navigate("/onboarding")}
-                className="flex size-9 items-center justify-center rounded-full bg-primary shadow-float"
+                className="flex size-10 items-center justify-center rounded-full bg-slate-950 text-white shadow-float active:scale-90 transition-transform"
               >
                 <span
-                  className="material-symbols-outlined text-[1rem] text-slate-950"
+                  className="material-symbols-outlined text-[1.1rem]"
                   style={{ fontVariationSettings: "'FILL' 1" }}
                 >
                   edit
@@ -131,65 +131,32 @@ export function ProfilePage() {
             }
           />
           <div className="text-center">
-            <h2 className="text-2xl font-extrabold text-text">{displayName}</h2>
-            <p className="text-sm text-text-muted">{user.email}</p>
+            <h2 className="text-2xl font-black text-text tracking-tight">{displayName}</h2>
+            <p className="text-sm font-medium text-text-muted">{user.email}</p>
           </div>
         </div>
 
-        {/* Info section */}
-        <div className="space-y-2">
-          <p className="px-1 text-xs font-black uppercase tracking-[0.2em] text-text-muted">
-            Información
-          </p>
-          {ROW_ITEMS.filter((it) => it.section === "INFORMACIÓN").map((item) => (
+        {/* Menu Items */}
+        <div className="space-y-3">
+          {ROW_ITEMS.map((item) => (
             <Link
               key={item.key}
               to={item.href}
-              className="flex items-center gap-3 rounded-2xl bg-surface px-4 py-3 shadow-card"
+              className="flex items-center gap-4 rounded-[1.75rem] bg-white px-5 py-4 shadow-sm border border-primary/5 hover:border-primary/20 transition-all active:scale-[0.98]"
             >
-              <div className="flex size-10 flex-shrink-0 items-center justify-center rounded-xl bg-primary/12">
+              <div className="flex size-11 flex-shrink-0 items-center justify-center rounded-2xl bg-primary/12">
                 <span
-                  className="material-symbols-outlined text-[1.2rem] text-primary"
+                  className="material-symbols-outlined text-[1.25rem] text-primary"
                   style={{ fontVariationSettings: "'FILL' 1" }}
                 >
                   {item.icon}
                 </span>
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-text">{item.label}</p>
-                <p className="text-sm text-text-muted">{getSublabel(item.key)}</p>
+                <p className="text-sm font-black text-text uppercase tracking-tight">{item.label}</p>
+                <p className="text-xs font-bold text-text-muted/60">{getSublabel(item.key)}</p>
               </div>
-              <span className="material-symbols-outlined text-[1.1rem] text-text-muted">
-                chevron_right
-              </span>
-            </Link>
-          ))}
-        </div>
-
-        {/* Finance section */}
-        <div className="space-y-2">
-          <p className="px-1 text-xs font-black uppercase tracking-[0.2em] text-text-muted">
-            Finanzas
-          </p>
-          {ROW_ITEMS.filter((it) => it.section === "FINANZAS").map((item) => (
-            <Link
-              key={item.key}
-              to={item.href}
-              className="flex items-center gap-3 rounded-2xl bg-surface px-4 py-3 shadow-card"
-            >
-              <div className="flex size-10 flex-shrink-0 items-center justify-center rounded-xl bg-primary/12">
-                <span
-                  className="material-symbols-outlined text-[1.2rem] text-primary"
-                  style={{ fontVariationSettings: "'FILL' 1" }}
-                >
-                  {item.icon}
-                </span>
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-text">{item.label}</p>
-                <p className="text-sm text-text-muted">{getSublabel(item.key)}</p>
-              </div>
-              <span className="material-symbols-outlined text-[1.1rem] text-text-muted">
+              <span className="material-symbols-outlined text-[1.1rem] text-text-muted/40">
                 chevron_right
               </span>
             </Link>

@@ -10,6 +10,7 @@ import { EmptyState } from "../../../components/feedback/EmptyState";
 import { useAuth } from "../../auth/AuthContext";
 import { listEvents } from "../service";
 import { formatDate } from "../../../utils/format";
+import { Avatar } from "../../../components/ui/Avatar";
 import { AvatarStack } from "../../../components/ui/AvatarStack";
 
 export function EventsListPage() {
@@ -45,37 +46,28 @@ export function EventsListPage() {
         {listQuery.data.length === 0 ? (
           <EmptyState
             icon="celebration"
-            title="Todavia no participas en eventos"
-            description="Crea uno manualmente desde un grupo o espera la automatizacion de cumpleanos."
+            title="Todavía no participas en eventos"
+            description="Crea uno manualmente desde un grupo o espera a que se generen automáticamente."
           />
         ) : (
           listQuery.data.map((event) => (
-            <Link key={event.id} to={`/eventos/${event.id}`} className="block">
-              <Card className="space-y-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-lg font-bold text-text">{event.birthday_profile?.display_name || "Evento"}</p>
-                    <p className="text-sm text-text-muted">{event.groups?.name}</p>
-                    <div className="mt-1 flex items-center gap-2">
-                      <p className="text-xs font-medium text-text-muted">
-                        {event.participants?.length || 0} cómplice{(event.participants?.length !== 1) ? "s" : ""}
-                      </p>
-                      <StatusBadge status={event.status}>{event.status}</StatusBadge>
-                    </div>
+            <Link key={event.id} to={`/eventos/${event.id}`} className="block transform active:scale-[0.99] transition-all">
+              <Card className="p-3.5 rounded-2xl border-none shadow-sm hover:shadow-md transition-all bg-white flex items-center gap-3">
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-[15px] font-black text-text truncate leading-tight">
+                    Cumple de {event.birthday_profile?.display_name?.split(" ")[0] || "Alguien"}
+                  </h3>
+                  <div className="flex items-center gap-2 mt-0.5 text-[10px] font-bold text-text-muted/60 uppercas">
+                    <span className="truncate max-w-[120px]">{event.groups?.name || 'Privado'}</span>
+                    <span className="opacity-40">•</span>
+                    <span>{event.participants?.length || 0} {event.participants?.length === 1 ? 'Cómplice' : 'Cómplices'}</span>
                   </div>
                 </div>
-                <div className="flex items-center justify-between border-t border-border/50 pt-3">
-                  <AvatarStack
-                    users={(event.participants || []).slice(0, 4).map((p) => ({
-                      id: p.user_id,
-                      name: p.profiles?.display_name,
-                      avatar_url: p.profiles?.avatar_url
-                    }))}
-                    max={3}
-                  />
-                  <p className="text-[10px] font-black uppercase tracking-wider text-text-muted bg-surface-muted px-2 py-1 rounded-lg">
-                    {event.participant_role === 'organizer' ? 'ORGANIZADOR' : 'CÓMPLICE'}
-                  </p>
+
+                <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+                  <div className="whitespace-nowrap scale-[0.85] origin-right">
+                    <StatusBadge status={event.status} />
+                  </div>
                 </div>
               </Card>
             </Link>

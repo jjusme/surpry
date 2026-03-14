@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -17,21 +17,13 @@ import { ErrorState } from "../../../components/feedback/ErrorState";
 import { useAuth } from "../../auth/AuthContext";
 import {
   getMyProfile,
-  savePaymentDestination,
   upsertProfile
 } from "../service";
-import { PAYMENT_DESTINATION_TYPES } from "../../../lib/constants";
 
 const schema = z.object({
   display_name: z.string().min(2, "Tu nombre debe tener al menos 2 caracteres."),
   birthday_day: z.coerce.number().min(1).max(31),
-  birthday_month: z.coerce.number().min(1).max(12),
-  payment_type: z.string().optional(),
-  payment_label: z.string().optional(),
-  payment_bank_name: z.string().optional(),
-  payment_account_holder: z.string().optional(),
-  payment_destination_value: z.string().optional(),
-  payment_note: z.string().optional()
+  birthday_month: z.coerce.number().min(1).max(12)
 });
 
 const months = [
@@ -70,13 +62,7 @@ export function ProfileSetupPage() {
     defaultValues: {
       display_name: user?.user_metadata?.display_name || "",
       birthday_day: "",
-      birthday_month: "",
-      payment_type: "",
-      payment_label: "",
-      payment_bank_name: "",
-      payment_account_holder: "",
-      payment_destination_value: "",
-      payment_note: ""
+      birthday_month: ""
     }
   });
 
@@ -85,13 +71,7 @@ export function ProfileSetupPage() {
       reset({
         display_name: profileQuery.data.display_name || user?.user_metadata?.display_name || "",
         birthday_day: profileQuery.data.birthday_day || "",
-        birthday_month: profileQuery.data.birthday_month || "",
-        payment_type: "",
-        payment_label: "",
-        payment_bank_name: "",
-        payment_account_holder: "",
-        payment_destination_value: "",
-        payment_note: ""
+        birthday_month: profileQuery.data.birthday_month || ""
       });
     }
   }, [profileQuery.data, reset, user?.user_metadata?.display_name]);
@@ -99,18 +79,6 @@ export function ProfileSetupPage() {
   const saveMutation = useMutation({
     mutationFn: async (values) => {
       await upsertProfile(user.id, values);
-
-      if (values.payment_type && values.payment_destination_value) {
-        await savePaymentDestination(user.id, {
-          type: values.payment_type,
-          label: values.payment_label,
-          bank_name: values.payment_bank_name,
-          account_holder: values.payment_account_holder,
-          destination_value: values.payment_destination_value,
-          note: values.payment_note,
-          is_default: true
-        });
-      }
     },
     onSuccess: async () => {
       await Promise.all([
