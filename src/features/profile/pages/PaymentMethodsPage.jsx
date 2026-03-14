@@ -139,7 +139,7 @@ export function PaymentMethodsPage() {
               {editing ? "Editar metodo" : "Agregar metodo"}
             </h2>
             <p className="text-sm text-text-muted">
-              Solo se mostrara a personas con shares relacionadas a tus gastos.
+              Solo se mostrará a personas que deban reembolsarte dinero de un gasto compartido.
             </p>
           </div>
 
@@ -181,7 +181,7 @@ export function PaymentMethodsPage() {
 
         <Card className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-text">Tus metodos</h2>
+            <h2 className="text-lg font-bold text-text">Tus métodos</h2>
             {editing ? (
               <Button variant="ghost" onClick={() => {
                 setEditing(null);
@@ -193,7 +193,7 @@ export function PaymentMethodsPage() {
           </div>
 
           {listQuery.data.length === 0 ? (
-            <p className="text-sm text-text-muted">Aun no agregas ningun metodo.</p>
+            <p className="text-sm text-text-muted">Aún no agregas ningún método.</p>
           ) : (
             listQuery.data.map((item) => (
               <div key={item.id} className="space-y-3 rounded-2xl bg-surface-muted px-4 py-4">

@@ -2,7 +2,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { AppShell } from "../../../components/layout/AppShell";
 import { PageHeader } from "../../../components/layout/PageHeader";
-import { Card } from "../../../components/ui/Card";
 import { Button } from "../../../components/ui/Button";
 import { Avatar } from "../../../components/ui/Avatar";
 import { LoadingState } from "../../../components/feedback/LoadingState";
@@ -106,16 +105,6 @@ export function ProfilePage() {
       header={
         <PageHeader
           title="Perfil"
-          action={
-            <button
-              onClick={() => navigate("/onboarding")}
-              className="flex size-10 items-center justify-center rounded-full bg-surface shadow-card"
-            >
-              <span className="material-symbols-outlined text-[1.25rem] text-text-muted">
-                settings
-              </span>
-            </button>
-          }
         />
       }
     >

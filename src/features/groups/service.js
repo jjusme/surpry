@@ -1,4 +1,4 @@
-﻿import { requireSupabase } from "../../lib/supabase";
+import { requireSupabase } from "../../lib/supabase";
 
 function createInviteToken() {
   return crypto.randomUUID().replace(/-/g, "");
@@ -17,7 +17,17 @@ export async function listGroups(userId) {
           name,
           photo_url,
           auto_create_days_before,
-          created_at
+          created_at,
+          members:group_members (
+            user_id,
+            profiles (
+              id,
+              display_name,
+              avatar_url,
+              birthday_day,
+              birthday_month
+            )
+          )
         )
       `
     )
@@ -186,4 +196,15 @@ export async function acceptInvite(token) {
   }
 
   return data;
+}
+
+export async function deleteGroup(groupId) {
+  const supabase = requireSupabase();
+  const { error } = await supabase.rpc("delete_group", {
+    p_group_id: groupId
+  });
+
+  if (error) {
+    throw error;
+  }
 }

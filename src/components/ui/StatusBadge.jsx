@@ -11,6 +11,18 @@ const styles = {
   rejected: "bg-danger/15 text-danger"
 };
 
+const translations = {
+  draft: "Borrador",
+  active: "En marcha",
+  completed: "Finalizado",
+  cancelled: "Cancelado",
+  pending: "Pendiente",
+  reported_paid: "En revisión",
+  confirmed: "Confirmado",
+  rejected: "Rechazado",
+  proposed: "Propuesta"
+};
+
 export function StatusBadge({ status, children, className }) {
   return (
     <span
@@ -20,7 +32,7 @@ export function StatusBadge({ status, children, className }) {
         className
       )}
     >
-      {children || status}
+      {children || translations[status] || status}
     </span>
   );
 }

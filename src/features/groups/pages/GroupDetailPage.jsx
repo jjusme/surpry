@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-hot-toast";
@@ -10,9 +10,10 @@ import { Select } from "../../../components/ui/Select";
 import { Avatar } from "../../../components/ui/Avatar";
 import { LoadingState } from "../../../components/feedback/LoadingState";
 import { ErrorState } from "../../../components/feedback/ErrorState";
+import { ConfirmDialog } from "../../../components/ui/ConfirmDialog";
 import { useAuth } from "../../auth/AuthContext";
 import { createEvent } from "../../events/service";
-import { createGroupInvite, getGroupDetail } from "../service";
+import { createGroupInvite, getGroupDetail, deleteGroup } from "../service";
 import { formatBirthday, formatDate } from "../../../utils/format";
 import { cn } from "../../../utils/cn";
 
@@ -23,6 +24,7 @@ export function GroupDetailPage() {
   const [selectedBirthdayUser, setSelectedBirthdayUser] = useState("");
   const [inviteUrl, setInviteUrl] = useState("");
   const [copySuccess, setCopySuccess] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
   const detailQuery = useQuery({
     queryKey: ["group-detail", groupId],
@@ -48,6 +50,15 @@ export function GroupDetailPage() {
         queryClient.invalidateQueries({ queryKey: ["events", user.id] })
       ]);
       toast.success("Plan sorpresa iniciado");
+    },
+    onError: (error) => toast.error(error.message)
+  });
+
+  const deleteGroupMutation = useMutation({
+    mutationFn: () => deleteGroup(groupId),
+    onSuccess: () => {
+      toast.success("Grupo eliminado");
+      window.location.href = "/grupos";
     },
     onError: (error) => toast.error(error.message)
   });
@@ -271,13 +282,41 @@ export function GroupDetailPage() {
                     "rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-wider",
                     member.role === 'admin' ? "bg-primary/10 text-primary" : "bg-surface-muted text-text-muted"
                   )}>
-                    {member.role}
+                    {member.role === 'admin' ? 'ADMIN' : 'CÓMPLICE'}
                   </span>
                 </div>
               </div>
             ))}
           </div>
         </div>
+
+        {group.created_by === user?.id && (
+          <div className="pt-8 pb-12">
+            <Button
+              variant="ghost"
+              className="w-full text-danger/60 hover:text-danger hover:bg-danger/5 text-xs font-black uppercase tracking-widest h-12 rounded-2xl border border-dashed border-danger/20"
+              onClick={() => setIsDeleteConfirmOpen(true)}
+              disabled={deleteGroupMutation.isPending}
+            >
+              {deleteGroupMutation.isPending ? "Eliminando..." : "Eliminar Grupo Completamente"}
+            </Button>
+          </div>
+        )}
+
+        <ConfirmDialog
+          isOpen={isDeleteConfirmOpen}
+          title="¿Eliminar Grupo?"
+          description="Se borrarán todos los planes y gastos asociados. Esta acción no se puede deshacer."
+          confirmLabel="Sí, eliminar todo"
+          cancelLabel="Mantener grupo"
+          variant="danger"
+          onConfirm={() => {
+            deleteGroupMutation.mutate();
+            setIsDeleteConfirmOpen(false);
+          }}
+          onCancel={() => setIsDeleteConfirmOpen(false)}
+          isLoading={deleteGroupMutation.isPending}
+        />
       </div>
     </AppShell>
   );

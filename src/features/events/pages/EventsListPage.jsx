@@ -1,4 +1,4 @@
-﻿import { Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "../../../components/layout/AppShell";
 import { PageHeader } from "../../../components/layout/PageHeader";
@@ -10,6 +10,7 @@ import { EmptyState } from "../../../components/feedback/EmptyState";
 import { useAuth } from "../../auth/AuthContext";
 import { listEvents } from "../service";
 import { formatDate } from "../../../utils/format";
+import { AvatarStack } from "../../../components/ui/AvatarStack";
 
 export function EventsListPage() {
   const { user, isSupabaseConfigured } = useAuth();
@@ -55,11 +56,27 @@ export function EventsListPage() {
                   <div>
                     <p className="text-lg font-bold text-text">{event.birthday_profile?.display_name || "Evento"}</p>
                     <p className="text-sm text-text-muted">{event.groups?.name}</p>
-                    <p className="text-sm text-text-muted">{formatDate(event.birthday_date)}</p>
+                    <div className="mt-1 flex items-center gap-2">
+                      <p className="text-xs font-medium text-text-muted">
+                        {event.participants?.length || 0} cómplice{(event.participants?.length !== 1) ? "s" : ""}
+                      </p>
+                      <StatusBadge status={event.status}>{event.status}</StatusBadge>
+                    </div>
                   </div>
-                  <StatusBadge status={event.status}>{event.status}</StatusBadge>
                 </div>
-                <p className="text-sm text-text-muted">Tu rol: {event.participant_role}</p>
+                <div className="flex items-center justify-between border-t border-border/50 pt-3">
+                  <AvatarStack
+                    users={(event.participants || []).slice(0, 4).map((p) => ({
+                      id: p.user_id,
+                      name: p.profiles?.display_name,
+                      avatar_url: p.profiles?.avatar_url
+                    }))}
+                    max={3}
+                  />
+                  <p className="text-[10px] font-black uppercase tracking-wider text-text-muted bg-surface-muted px-2 py-1 rounded-lg">
+                    {event.participant_role === 'organizer' ? 'ORGANIZADOR' : 'CÓMPLICE'}
+                  </p>
+                </div>
               </Card>
             </Link>
           ))

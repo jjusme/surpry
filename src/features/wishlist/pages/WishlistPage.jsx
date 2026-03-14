@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -14,6 +14,7 @@ import { Select } from "../../../components/ui/Select";
 import { TextArea } from "../../../components/ui/TextArea";
 import { LoadingState } from "../../../components/feedback/LoadingState";
 import { ErrorState } from "../../../components/feedback/ErrorState";
+import { ConfirmDialog } from "../../../components/ui/ConfirmDialog";
 import { useAuth } from "../../auth/AuthContext";
 import { deleteWishlistItem, listMyWishlist, saveWishlistItem } from "../service";
 import { formatCurrency } from "../../../utils/format";
@@ -31,6 +32,7 @@ export function WishlistPage() {
   const queryClient = useQueryClient();
   const { user, isSupabaseConfigured } = useAuth();
   const [editing, setEditing] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
   const listQuery = useQuery({
     queryKey: ["wishlist", user?.id],
     queryFn: () => listMyWishlist(user.id),
@@ -82,9 +84,13 @@ export function WishlistPage() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["wishlist", user.id] });
       setEditing(null);
+      setDeletingId(null);
       toast.success("Regalo eliminado");
     },
-    onError: (error) => toast.error(error.message)
+    onError: (error) => {
+      setDeletingId(null);
+      toast.error(error.message);
+    }
   });
 
   const onSubmit = handleSubmit(async (values) => {
@@ -120,7 +126,7 @@ export function WishlistPage() {
                 {editing ? "Editar regalo" : "Agregar regalo"}
               </h2>
               <p className="text-sm text-text-muted">
-                Tus grupos podran ver esta lista, pero no sabras si alguien ya lo eligio.
+                Tus grupos podrán ver esta lista, pero no sabrás si alguien ya lo eligió.
               </p>
             </div>
             {editing ? (
@@ -135,8 +141,8 @@ export function WishlistPage() {
 
           <form className="space-y-4" onSubmit={onSubmit}>
             <input type="hidden" {...register("id")} />
-            <FormField label="Titulo" error={errors.title?.message}>
-              <Input placeholder="Ej. Audifonos Sony" {...register("title")} />
+            <FormField label="Título" error={errors.title?.message}>
+              <Input placeholder="Título del regalo..." {...register("title")} />
             </FormField>
             <FormField label="Link">
               <Input placeholder="https://..." {...register("url")} />
@@ -154,7 +160,7 @@ export function WishlistPage() {
               </FormField>
             </div>
             <FormField label="Nota">
-              <TextArea rows={3} placeholder="Alguna pista util" {...register("notes")} />
+              <TextArea rows={3} placeholder="Detalles importantes..." {...register("notes")} />
             </FormField>
             <Button type="submit" size="lg" className="w-full" disabled={isSubmitting || saveMutation.isPending}>
               {saveMutation.isPending ? "Guardando..." : editing ? "Actualizar item" : "Agregar item"}
@@ -173,7 +179,7 @@ export function WishlistPage() {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-lg font-bold text-text">{item.title}</p>
-                    <p className="text-sm text-text-muted">Prioridad {item.priority || "media"}</p>
+                    <p className="text-sm text-text-muted">Prioridad {(item.priority || "media").toUpperCase()}</p>
                     {item.price_estimate ? (
                       <p className="text-sm font-semibold text-primary-strong">
                         {formatCurrency(item.price_estimate)}
@@ -194,7 +200,7 @@ export function WishlistPage() {
                   <Button variant="secondary" className="flex-1" onClick={() => setEditing(item)}>
                     Editar
                   </Button>
-                  <Button variant="danger" className="flex-1" onClick={() => deleteMutation.mutate(item.id)}>
+                  <Button variant="danger" className="flex-1" onClick={() => setDeletingId(item.id)}>
                     Eliminar
                   </Button>
                 </div>
@@ -202,6 +208,18 @@ export function WishlistPage() {
             ))
           )}
         </div>
+
+        <ConfirmDialog
+          isOpen={!!deletingId}
+          title="¿Eliminar item?"
+          description="Este regalo se quitará de tu wishlist permanentemente."
+          confirmLabel="Sí, borrar"
+          cancelLabel="Mantener"
+          variant="danger"
+          onConfirm={() => deleteMutation.mutate(deletingId)}
+          onCancel={() => setDeletingId(null)}
+          isLoading={deleteMutation.isPending}
+        />
       </div>
     </AppShell>
   );

@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 import { toast } from "react-hot-toast";
@@ -76,13 +76,18 @@ export function ShareDetailPage() {
     return (
       <div className="app-frame flex items-center px-4">
         <ErrorState
-          title="No pudimos cargar esta share"
+          title="No pudimos cargar este pago"
           description={shareQuery.error.message}
           onRetry={shareQuery.refetch}
         />
       </div>
     );
   }
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text);
+    toast.success("Copiado al portapapeles");
+  };
 
   const share = shareQuery.data;
 
@@ -95,43 +100,84 @@ export function ShareDetailPage() {
         <div className="flex items-center justify-between gap-3">
           <div>
             <h2 className="text-2xl font-bold text-text">{formatCurrency(share?.amount_due)}</h2>
-            <p className="text-sm text-text-muted">{share?.expense_title || "Share"}</p>
+            <p className="text-sm text-text-muted">{share?.expense_title || "Pago"}</p>
           </div>
-          <StatusBadge status={share?.status}>{share?.status}</StatusBadge>
+          <StatusBadge status={share?.status} />
         </div>
 
         <Card className="space-y-3">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted">Enviar pago a</p>
           <div className="space-y-2">
-            <p className="text-lg font-bold text-text">{share?.destination_account_holder || "Sin titular"}</p>
-            <p className="text-sm text-text-muted">{share?.destination_bank_name || "Sin banco"}</p>
-            <p className="text-sm text-text-muted">Metodo: {share?.destination_type || "Sin metodo"}</p>
-            <p className="text-sm font-semibold text-primary-strong break-all">{share?.destination_value || "No disponible"}</p>
+            <p className="text-sm text-text-muted">Nombre: <span className="text-text font-medium">{share?.destination_account_holder || "Sin titular"}</span></p>
+            <p className="text-sm text-text-muted">Banco: <span className="text-text font-medium">{share?.destination_bank_name || "Sin banco"}</span></p>
+            <p className="text-sm text-text-muted">Método: <span className="text-text font-medium uppercase">{share?.destination_type || "Sin método"}</span></p>
+            <div className="flex items-center justify-between gap-4 p-3 rounded-2xl bg-surface-muted/30 border border-primary/10">
+              <span className="text-sm font-bold text-primary-strong break-all select-all">{share?.destination_value || "No disponible"}</span>
+              <button
+                onClick={() => copyToClipboard(share?.destination_value)}
+                className="flex-shrink-0 size-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center active:scale-90 transition-transform"
+                title="Copiar"
+              >
+                <span className="material-symbols-outlined text-[1.25rem]">content_copy</span>
+              </button>
+            </div>
             {share?.destination_note ? <p className="text-sm text-text-muted">{share.destination_note}</p> : null}
           </div>
         </Card>
 
-        <Card className="space-y-4">
-          <div>
-            <h3 className="text-lg font-bold text-text">Reportar pago</h3>
-            <p className="text-sm text-text-muted">Marca cuando ya transferiste y sube comprobante si aplica.</p>
-          </div>
-          <TextArea rows={3} placeholder="Nota opcional" value={note} onChange={(event) => setNote(event.target.value)} />
-          <Input type="file" onChange={(event) => setProofFile(event.target.files?.[0] || null)} />
-          <Button className="w-full" size="lg" onClick={() => reportMutation.mutate()} disabled={reportMutation.isPending}>
-            {reportMutation.isPending ? "Enviando..." : "Confirmar transferencia enviada"}
-          </Button>
-        </Card>
+        {share?.status === 'pending' || share?.status === 'rejected' ? (
+          <Card className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
+            <div>
+              <h3 className="text-lg font-bold text-text">Reportar pago</h3>
+              <p className="text-sm text-text-muted">Marca cuando ya transferiste y sube comprobante si aplica.</p>
+            </div>
+            {share?.status === 'rejected' && (
+              <div className="rounded-2xl bg-danger/10 p-4 border border-danger/20">
+                <p className="text-xs font-bold text-danger uppercase tracking-wider mb-1">Pago rechazado</p>
+                <p className="text-xs text-danger/80 italic">"Revisa los datos de transferencia o el comprobante y vuelve a intentarlo."</p>
+              </div>
+            )}
+            <TextArea rows={3} placeholder="Nota opcional (ej. 'Ya deposité')" value={note} onChange={(event) => setNote(event.target.value)} />
+            <div className="space-y-2">
+              <p className="text-[10px] font-black uppercase tracking-widest text-text-muted ml-1">Comprobante (Opcional)</p>
+              <Input type="file" className="p-2 h-auto text-xs" onChange={(event) => setProofFile(event.target.files?.[0] || null)} />
+            </div>
+            <Button className="w-full h-14 text-lg font-black shadow-lg shadow-primary/20" size="lg" onClick={() => reportMutation.mutate()} disabled={reportMutation.isPending}>
+              {reportMutation.isPending ? "Reportando..." : "Confirmar enviada"}
+            </Button>
+          </Card>
+        ) : share?.status === 'reported_paid' ? (
+          <Card className="bg-surface-muted/30 border-dashed p-8 text-center space-y-4 animate-in zoom-in duration-500">
+            <div className="size-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto">
+              <span className="material-symbols-outlined text-primary text-3xl">hourglass_empty</span>
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-text">Pago en revisión</h3>
+              <p className="text-sm text-text-muted">Ya reportaste este pago. Avisaremos cuando el cómplice lo confirme.</p>
+            </div>
+          </Card>
+        ) : (
+          <Card className="bg-green-500/10 border-green-500/20 p-8 text-center space-y-4 animate-in zoom-in duration-500">
+            <div className="size-16 bg-green-500 text-white rounded-full flex items-center justify-center mx-auto shadow-lg shadow-green-500/20">
+              <span className="material-symbols-outlined text-3xl">check</span>
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-green-600">¡Pago Confirmado!</h2>
+              <p className="text-sm text-green-700/70 font-medium">Gracias por tu aporte a la sorpresa.</p>
+            </div>
+          </Card>
+        )}
 
-        {share?.can_review ? (
-          <Card className="space-y-3">
-            <h3 className="text-lg font-bold text-text">Revision</h3>
-            <div className="flex gap-2">
-              <Button variant="secondary" className="flex-1" onClick={() => reviewMutation.mutate("confirmed")}>
-                Confirmar pago
+        {share?.can_review && share?.status === 'reported_paid' ? (
+          <Card className="space-y-4 border-l-4 border-primary p-5 animate-in slide-in-from-right-4 duration-500">
+            <h3 className="text-lg font-black text-text uppercase tracking-tight">Cómplice: Revisa este pago</h3>
+            <p className="text-xs text-text-muted italic">"Confirma si ya viste reflejado el dinero en tu cuenta."</p>
+            <div className="flex gap-3">
+              <Button variant="secondary" className="flex-1 h-12 font-black" onClick={() => reviewMutation.mutate("confirmed")}>
+                Lo recibí
               </Button>
-              <Button variant="danger" className="flex-1" onClick={() => reviewMutation.mutate("rejected")}>
-                Rechazar
+              <Button variant="ghost" className="border border-danger/20 text-danger hover:bg-danger/5 h-12 font-black" onClick={() => reviewMutation.mutate("rejected")}>
+                No lo recibí
               </Button>
             </div>
           </Card>

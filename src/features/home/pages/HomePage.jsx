@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "../../../components/layout/AppShell";
@@ -25,7 +25,20 @@ async function getPendingShares(userId) {
     .from("expense_shares")
     .select(`*, expenses (id, title, amount, event_id)`)
     .eq("user_id", userId)
-    .in("status", ["pending", "rejected", "reported_paid"])
+    .in("status", ["pending", "rejected"])
+    .order("created_at", { ascending: false })
+    .limit(5);
+  if (error) throw error;
+  return data ?? [];
+}
+
+async function getReportedShares(userId) {
+  const supabase = requireSupabase();
+  const { data, error } = await supabase
+    .from("expense_shares")
+    .select(`*, expenses (id, title, amount, event_id)`)
+    .eq("user_id", userId)
+    .eq("status", "reported_paid")
     .order("created_at", { ascending: false })
     .limit(5);
   if (error) throw error;
@@ -78,6 +91,12 @@ export function HomePage() {
   const notificationsQuery = useQuery({
     queryKey: ["notifications", user?.id],
     queryFn: () => getNotifications(user.id),
+    enabled: Boolean(user?.id && isSupabaseConfigured)
+  });
+
+  const reportedSharesQuery = useQuery({
+    queryKey: ["reported-shares", user?.id],
+    queryFn: () => getReportedShares(user.id),
     enabled: Boolean(user?.id && isSupabaseConfigured)
   });
 
@@ -177,19 +196,47 @@ export function HomePage() {
       <div className="space-y-6 pt-4 pb-12">
         {/* Pending payment banner */}
         {sharesQuery.data.length > 0 && (
-          <div className="flex items-center gap-4 rounded-3xl bg-primary/12 px-4 py-4 border border-primary/20">
-            <div className="flex size-12 flex-shrink-0 items-center justify-center rounded-2xl bg-primary/20">
-              <span className="material-symbols-outlined text-[1.4rem] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>
+          <div className="flex items-center gap-4 rounded-[2rem] bg-gradient-to-br from-primary/20 to-primary/5 px-5 py-5 border border-primary/20 shadow-sm animate-in fade-in slide-in-from-top-4 duration-500">
+            <div className="flex size-14 flex-shrink-0 items-center justify-center rounded-2xl bg-white shadow-badge">
+              <span className="material-symbols-outlined text-[1.6rem] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>
                 payments
               </span>
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-bold text-text">Saldos pendientes</p>
-              <p className="truncate text-sm text-text-muted font-medium">
-                Debes {formatCurrency(sharesQuery.data.reduce((acc, s) => acc + Number(s.amount_due || 0), 0))} en {sharesQuery.data.length} planes.
+              <p className="text-sm font-black text-text uppercase tracking-tight">Saldos pendientes</p>
+              <p className="truncate text-sm text-text-muted font-medium mt-0.5">
+                Debes {formatCurrency(sharesQuery.data.reduce((acc, s) => acc + Number(s.amount_due || 0), 0))}
               </p>
             </div>
-            <Button size="md" onClick={() => navigate(`/shares/${sharesQuery.data[0].id}`)}>Ver</Button>
+            <Button size="pill" variant="pill" className="h-10 px-6 font-black text-xs uppercase" onClick={() => navigate(`/shares/${sharesQuery.data[0].id}`)}>Liquidar</Button>
+          </div>
+        )}
+
+        {reportedSharesQuery.data?.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between px-1">
+              <h2 className="text-lg font-black tracking-tight text-text uppercase">En revisión</h2>
+              <span className="text-[10px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded-full border border-primary/20">{reportedSharesQuery.data.length} PENDIENTES</span>
+            </div>
+            <div className="flex gap-4 overflow-x-auto pb-4 -mx-4 px-4 no-scrollbar snap-x">
+              {reportedSharesQuery.data.map((share) => (
+                <Card
+                  key={share.id}
+                  className="flex-shrink-0 w-[240px] p-4 bg-surface-muted/30 border-dashed snap-center active:scale-95 transition-all cursor-pointer"
+                  onClick={() => navigate(`/shares/${share.id}`)}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="size-10 rounded-2xl bg-primary/20 flex items-center justify-center text-primary">
+                      <span className="material-symbols-outlined text-[1.25rem]" style={{ fontVariationSettings: "'FILL' 1" }}>hourglass_top</span>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-text truncate">{share.expenses?.title}</p>
+                      <p className="text-[10px] font-black text-primary/60 uppercase tracking-widest leading-none">Cómplice revisando</p>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
           </div>
         )}
 
@@ -200,16 +247,16 @@ export function HomePage() {
               <h2 className="text-lg font-black tracking-tight text-text">Próximos cumpleañeros</h2>
               <Link className="text-xs font-bold text-primary uppercase tracking-wider" to="/grupos">Ver todos</Link>
             </div>
-            <div className="flex gap-4 overflow-x-auto pb-4 -mx-1 px-1 no-scrollbar">
+            <div className="flex gap-4 overflow-x-auto pb-6 -mx-4 px-4 no-scrollbar snap-x">
               {upcomingBirthdays.map((member, i) => (
-                <div key={i} className="flex flex-shrink-0 flex-col items-center gap-2">
-                  <div className="relative group active:scale-95 transition-transform">
-                    <Avatar name={member.display_name} url={member.avatar_url} className="size-16 ring-4 ring-bg" ring />
-                    <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full bg-primary px-2 py-0.5 text-[10px] font-black text-slate-950 shadow-float ring-2 ring-bg">
+                <div key={i} className="flex flex-shrink-0 flex-col items-center gap-2 snap-center">
+                  <div className="relative group active:scale-90 transition-all duration-300">
+                    <Avatar name={member.display_name} url={member.avatar_url} className="size-16 ring-4 ring-bg shadow-lg group-hover:ring-primary/30" ring />
+                    <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full bg-primary px-2.5 py-0.5 text-[10px] font-black text-slate-950 shadow-float ring-2 ring-bg">
                       {member.days}d
                     </span>
                   </div>
-                  <p className="max-w-[4.5rem] truncate text-center text-[11px] font-bold text-text">
+                  <p className="max-w-[4.8rem] truncate text-center text-[11px] font-bold text-text-muted group-hover:text-text transition-colors">
                     {member.display_name?.split(" ")[0]}
                   </p>
                 </div>
@@ -237,7 +284,7 @@ export function HomePage() {
               const totalExpenses = (event.expenses || []).reduce((acc, e) => acc + Number(e.amount || 0), 0);
               const priceEstimate = event.gift_options?.[0]?.price_estimate || 0;
               const progress = priceEstimate > 0 ? Math.min(100, Math.round((totalExpenses / priceEstimate) * 100)) : 0;
-              const participants = event.event_participants || [];
+              const participants = event.participants || [];
 
               return (
                 <Link key={event.id} to={`/eventos/${event.id}`} className="block">
@@ -256,7 +303,7 @@ export function HomePage() {
                           </p>
                         </div>
                       </div>
-                      <StatusBadge status={event.status}>{event.status === 'active' ? 'En marcha' : event.status}</StatusBadge>
+                      <StatusBadge status={event.status} />
                     </div>
 
                     {priceEstimate > 0 && (

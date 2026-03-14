@@ -1,4 +1,4 @@
-﻿export const EVENT_STATUS = {
+export const EVENT_STATUS = {
   DRAFT: "draft",
   ACTIVE: "active",
   COMPLETED: "completed",
@@ -39,7 +39,5 @@ export const EVENT_TABS = [
   { id: "resumen", label: "Resumen" },
   { id: "regalo", label: "Regalo" },
   { id: "gastos", label: "Gastos" },
-  { id: "pagos", label: "Pagos" },
-  { id: "actividad", label: "Actividad" },
-  { id: "chat", label: "Chat" }
+  { id: "pagos", label: "Pagos" }
 ];

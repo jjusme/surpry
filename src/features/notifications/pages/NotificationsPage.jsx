@@ -133,18 +133,33 @@ export function NotificationsPage() {
                 ) : (
                     <div className="space-y-2">
                         {notifications.map((notification) => {
-                            const Icon = (() => {
-                                switch (notification.type) {
-                                    case 'expense_created': return 'receipt_long';
-                                    case 'payment_reported': return 'payments';
-                                    case 'payment_confirmed': return 'task_alt';
-                                    case 'event_created': return 'celebration';
-                                    case 'gift_proposed': return 'card_giftcard';
-                                    default: return 'notifications';
+                            const payload = notification.payload || {};
+                            const type = notification.type;
+
+                            const config = (() => {
+                                switch (type) {
+                                    case 'expense_created':
+                                        return { icon: 'receipt_long', title: 'Nuevo gasto registrado' };
+                                    case 'payment_reported':
+                                    case 'comprobante_subido':
+                                        return { icon: 'payments', title: 'Pago reportado' };
+                                    case 'pago_confirmado':
+                                    case 'payment_confirmed':
+                                        return { icon: 'task_alt', title: 'Pago confirmado' };
+                                    case 'pago_rechazado':
+                                        return { icon: 'error_outline', title: 'Pago rechazado' };
+                                    case 'evento_creado':
+                                    case 'event_created':
+                                        return { icon: 'celebration', title: '¡Nueva sorpresa!' };
+                                    case 'gift_proposed':
+                                        return { icon: 'card_giftcard', title: 'Nueva idea de regalo' };
+                                    default:
+                                        return { icon: 'notifications', title: 'Notificación' };
                                 }
                             })();
 
                             const isUnread = !notification.read_at;
+                            const message = notification.message || payload.message || '';
 
                             return (
                                 <Card
@@ -161,21 +176,21 @@ export function NotificationsPage() {
                                             isUnread ? "bg-primary/20 text-primary" : "bg-bg text-text-muted"
                                         )}>
                                             <span className="material-symbols-outlined text-[1.25rem]" style={{ fontVariationSettings: "'FILL' 1" }}>
-                                                {Icon}
+                                                {config.icon}
                                             </span>
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-start justify-between gap-2 mb-0.5">
                                                 <p className={cn("text-sm font-bold truncate", isUnread ? "text-text" : "text-text-muted")}>
-                                                    {notification.title}
+                                                    {notification.title || config.title}
                                                 </p>
                                                 <span className="text-[10px] font-bold text-text-muted/60 flex-shrink-0 whitespace-nowrap mt-0.5">
                                                     {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true, locale: es })}
                                                 </span>
                                             </div>
-                                            {notification.message && (
+                                            {message && (
                                                 <p className={cn("text-xs leading-relaxed line-clamp-2", isUnread ? "text-text-muted" : "text-text-muted/60")}>
-                                                    {notification.message}
+                                                    {message}
                                                 </p>
                                             )}
                                         </div>

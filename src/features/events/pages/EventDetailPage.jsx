@@ -1,4 +1,4 @@
-﻿import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -17,16 +17,18 @@ import { CountdownTimer } from "../../../components/ui/CountdownTimer";
 import { LoadingState } from "../../../components/feedback/LoadingState";
 import { ErrorState } from "../../../components/feedback/ErrorState";
 import { EmptyState } from "../../../components/feedback/EmptyState";
+import { ConfirmDialog } from "../../../components/ui/ConfirmDialog";
 import { useAuth } from "../../auth/AuthContext";
 import { requireSupabase } from "../../../lib/supabase";
-import { EventChatTab } from "../components/EventChatTab";
 import {
   addGiftOption,
   createExpenseWithShares,
   getEventDetail,
   reviewShare,
   updateGiftStatus,
-  uploadPrivateFile
+  syncEventWishlist,
+  uploadPrivateFile,
+  deleteEvent
 } from "../service";
 import { listPaymentDestinations } from "../../profile/service";
 import { EVENT_TABS, EXPENSE_CATEGORIES } from "../../../lib/constants";
@@ -51,6 +53,7 @@ export function EventDetailPage() {
   const [expenseForm, setExpenseForm] = useState(initialExpenseForm);
   const [selectedParticipants, setSelectedParticipants] = useState([]);
   const [receiptFile, setReceiptFile] = useState(null);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
   const detailQuery = useQuery({
     queryKey: ["event-detail", eventId],
@@ -146,6 +149,28 @@ export function EventDetailPage() {
     onError: (error) => toast.error(error.message)
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteEvent(eventId),
+    onSuccess: () => {
+      toast.success("Evento eliminado");
+      window.location.href = "/eventos";
+    },
+    onError: (error) => toast.error(error.message)
+  });
+
+  const syncWishlistMutation = useMutation({
+    mutationFn: () => syncEventWishlist(eventId),
+    onSuccess: (count) => {
+      if (count > 0) {
+        toast.success(`Se importaron ${count} ideas de la wishlist`);
+      } else {
+        toast.error("No hay ideas nuevas en la wishlist para importar");
+      }
+      queryClient.invalidateQueries({ queryKey: ["event-detail", eventId] });
+    },
+    onError: (error) => toast.error(error.message)
+  });
+
   const participants = detailQuery.data?.participants || [];
   const gifts = detailQuery.data?.gifts || [];
   const expenses = detailQuery.data?.expenses || [];
@@ -160,7 +185,7 @@ export function EventDetailPage() {
     () =>
       expenses.flatMap((expense) =>
         (expense.shares || [])
-          .filter((s) => s.user_id === user?.id)
+          .filter((s) => s.user_id === user?.id && s.status !== 'confirmed')
           .map((s) => ({ ...s, expense }))
       ),
     [expenses, user?.id]
@@ -170,7 +195,7 @@ export function EventDetailPage() {
     () =>
       expenses.flatMap((expense) =>
         (expense.shares || [])
-          .filter((s) => expense.paid_by_user_id === user?.id && s.user_id !== user?.id)
+          .filter((s) => expense.paid_by_user_id === user?.id && s.user_id !== user?.id && s.status === 'reported_paid')
           .map((s) => ({ ...s, expense }))
       ),
     [expenses, user?.id]
@@ -235,7 +260,7 @@ export function EventDetailPage() {
               ring
             />
             <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-primary px-3 py-0.5 text-[10px] font-black uppercase tracking-[0.15em] text-slate-950 shadow-float ring-2 ring-bg">
-              Homenajeado
+              Cumpleañero
             </span>
           </div>
           <div className="mt-3 space-y-1">
@@ -265,14 +290,14 @@ export function EventDetailPage() {
         </div>
 
         {/* Tab bar */}
-        <div className="sticky top-[3.75rem] z-10 -mx-4 border-b border-border bg-bg/95 px-4 backdrop-blur-md">
-          <div className="flex gap-1 overflow-x-auto no-scrollbar" style={{ scrollbarWidth: "none" }}>
+        <div className="sticky top-[3.75rem] z-10 -mx-4 border-b border-border bg-bg/95 backdrop-blur-md">
+          <div className="flex gap-1 overflow-x-auto no-scrollbar px-4 after:content-[''] after:w-4 after:flex-shrink-0 snap-x" style={{ scrollbarWidth: "none" }}>
             {EVENT_TABS.map((tab) => (
               <button
                 key={tab.id}
                 type="button"
                 className={cn(
-                  "flex-shrink-0 border-b-2 px-4 py-4 text-sm font-black uppercase tracking-wider transition-all",
+                  "snap-start flex-shrink-0 border-b-2 px-4 py-4 text-sm font-black uppercase tracking-wider transition-all",
                   activeTab === tab.id
                     ? "border-primary text-primary"
                     : "border-transparent text-text-muted hover:text-text opacity-60"
@@ -291,7 +316,7 @@ export function EventDetailPage() {
             <Card className="space-y-5 shadow-sm border-l-4 border-primary p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted mb-1">
+                  <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted mb-1">
                     Estado del plan
                   </p>
                   <StatusBadge status={event?.status}>
@@ -339,7 +364,9 @@ export function EventDetailPage() {
                       <p className="text-sm font-bold text-text">
                         {p.profiles?.display_name}
                       </p>
-                      <p className="text-[10px] font-black uppercase tracking-wider text-text-muted">{p.role}</p>
+                      <p className="text-[10px] font-black uppercase tracking-wider text-text-muted">
+                        {p.role === 'organizer' ? 'ORGANIZADOR' : 'CÓMPLICE'}
+                      </p>
                     </div>
                     <div className="flex size-7 items-center justify-center rounded-full bg-success/10">
                       <span
@@ -353,6 +380,34 @@ export function EventDetailPage() {
                 ))}
               </div>
             </div>
+
+            {event?.organizer_id === user?.id && (
+              <div className="pt-8 pb-4">
+                <Button
+                  variant="ghost"
+                  className="w-full text-danger/60 hover:text-danger hover:bg-danger/5 text-xs font-black uppercase tracking-widest h-12 rounded-2xl border border-dashed border-danger/20"
+                  onClick={() => setIsDeleteConfirmOpen(true)}
+                  disabled={deleteMutation.isPending}
+                >
+                  {deleteMutation.isPending ? "Eliminando..." : "Eliminar Plan"}
+                </Button>
+              </div>
+            )}
+
+            <ConfirmDialog
+              isOpen={isDeleteConfirmOpen}
+              title="¿Eliminar Plan?"
+              description="Esta acción no se puede deshacer y se perderán todos los datos del evento."
+              confirmLabel="Sí, eliminar"
+              cancelLabel="Mantener plan"
+              variant="danger"
+              onConfirm={() => {
+                deleteMutation.mutate();
+                setIsDeleteConfirmOpen(false);
+              }}
+              onCancel={() => setIsDeleteConfirmOpen(false)}
+              isLoading={deleteMutation.isPending}
+            />
           </div>
         )}
 
@@ -413,9 +468,23 @@ export function EventDetailPage() {
             <div className="space-y-3">
               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted px-1">Opciones actuales</p>
               {gifts.length === 0 ? (
-                <div className="rounded-[2rem] border border-dashed border-border p-8 text-center space-y-2 bg-surface/30">
-                  <span className="material-symbols-outlined text-text-muted/20 text-4xl">inventory_2</span>
-                  <p className="text-sm font-medium text-text-muted italic">Aún no hay propuestas de regalo en este plan.</p>
+                <div className="rounded-[2rem] border border-dashed border-border p-8 text-center space-y-4 bg-surface/30">
+                  <div className="size-16 bg-bg rounded-full flex items-center justify-center mx-auto opacity-50">
+                    <span className="material-symbols-outlined text-text-muted text-4xl">inventory_2</span>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-text-muted italic">Aún no hay propuestas de regalo en este plan.</p>
+                    <p className="text-xs text-text-muted/60">¿Por qué no traes las ideas de su wishlist?</p>
+                  </div>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => syncWishlistMutation.mutate()}
+                    disabled={syncWishlistMutation.isPending}
+                    className="font-black text-xs uppercase tracking-widest"
+                  >
+                    {syncWishlistMutation.isPending ? "Importando..." : "Traer Wishlist"}
+                  </Button>
                 </div>
               ) : (
                 gifts.map((gift) => (
@@ -431,40 +500,29 @@ export function EventDetailPage() {
                         {gift.notes ? (
                           <p className="text-sm text-text-muted italic leading-relaxed pt-1">"{gift.notes}"</p>
                         ) : null}
+                        {gift.source_type === 'wishlist' && (
+                          <div className="flex items-center gap-1 text-[10px] font-bold text-primary bg-primary/10 w-fit px-2 py-0.5 rounded-full mt-1">
+                            <span className="material-symbols-outlined text-[12px]">magic_button</span>
+                            WISHLIST
+                          </div>
+                        )}
+                        <div className="flex items-center gap-1.5 pt-1">
+                          <span className="text-[10px] font-bold text-text-muted/60 uppercase tracking-wider">PROPUESTO POR</span>
+                          <span className="text-[10px] font-black text-primary uppercase">{gift.profiles?.display_name || 'Alguien'}</span>
+                        </div>
+                        {gift.url && (
+                          <a
+                            href={gift.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 mt-2 rounded-xl bg-bg border border-border hover:border-primary/40 hover:bg-primary/5 transition-all group"
+                          >
+                            <span className="material-symbols-outlined text-[1rem] text-text-muted group-hover:text-primary transition-colors">link</span>
+                            <span className="text-[11px] font-bold text-text-muted group-hover:text-text transition-colors">Ver enlace</span>
+                          </a>
+                        )}
                       </div>
-                      <StatusBadge status={gift.status}>{gift.status === 'proposed' ? 'IDEA' : gift.status.toUpperCase()}</StatusBadge>
-                    </div>
-                    <div className="flex items-center gap-2 pt-1">
-                      <Button
-                        variant="secondary"
-                        size="md"
-                        className="flex-1 text-xs font-black uppercase rounded-xl h-10"
-                        onClick={() =>
-                          giftStatusMutation.mutate({ giftId: gift.id, status: "reserved" })
-                        }
-                      >
-                        Lo pido yo
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        size="md"
-                        className="flex-1 text-xs font-black uppercase rounded-xl h-10"
-                        onClick={() =>
-                          giftStatusMutation.mutate({ giftId: gift.id, status: "bought" })
-                        }
-                      >
-                        ¡Comprado!
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="md"
-                        className="flex-none size-10 flex items-center justify-center rounded-xl p-0"
-                        onClick={() =>
-                          giftStatusMutation.mutate({ giftId: gift.id, status: "discarded" })
-                        }
-                      >
-                        <span className="material-symbols-outlined text-danger/60">delete</span>
-                      </Button>
+                      <StatusBadge status={gift.status}>{gift.status === 'proposed' ? 'IDEA' : 'REGALO'}</StatusBadge>
                     </div>
                   </Card>
                 ))
@@ -631,7 +689,7 @@ export function EventDetailPage() {
         {activeTab === "pagos" && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-400">
             <Card className="space-y-5 p-5 shadow-sm">
-              <h3 className="text-lg font-black text-text tracking-tight uppercass">Tus cuentas pendientes</h3>
+              <h3 className="text-lg font-black text-text tracking-tight uppercase">Tus cuentas pendientes</h3>
               {myShares.length === 0 ? (
                 <div className="py-4 text-center">
                   <span className="material-symbols-outlined text-success opacity-20 text-4xl mb-2">verified</span>
@@ -649,7 +707,13 @@ export function EventDetailPage() {
                     >
                       <div className="min-w-0 flex-1">
                         <p className="text-xs font-black uppercase tracking-widest text-text-muted mb-0.5 opacity-60">{share.expense.title}</p>
-                        <StatusBadge status={share.status} size="sm">{share.status.toUpperCase()}</StatusBadge>
+                        <StatusBadge status={share.status} size="sm">
+                          {share.status === 'pending' ? 'PENDIENTE' :
+                            share.status === 'reported_paid' ? 'EN REVISIÓN' :
+                              share.status === 'confirmed' ? 'CONFIRMADO' :
+                                share.status === 'rejected' ? 'RECHAZADO' :
+                                  share.status.toUpperCase()}
+                        </StatusBadge>
                       </div>
                       <p className="text-lg font-black text-primary">
                         {formatCurrency(share.amount_due)}
@@ -707,55 +771,6 @@ export function EventDetailPage() {
           </div>
         )}
 
-        {/* ACTIVIDAD */}
-        {activeTab === "actividad" && (
-          <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-400">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted px-1 mb-4 text-center">Línea del tiempo del plan</p>
-            {activity.length === 0 ? (
-              <EmptyState
-                icon="history"
-                title="Comenzando..."
-                description="Aquí verás cada paso que den los cómplices para esta sorpresa."
-              />
-            ) : (
-              <div className="relative space-y-4 before:absolute before:inset-y-0 before:left-8 before:w-0.5 before:bg-border/30">
-                {activity.map((entry) => (
-                  <div
-                    key={entry.id}
-                    className="flex items-start gap-4"
-                  >
-                    <div className="relative z-10 flex size-16 flex-shrink-0 items-center justify-center rounded-2xl bg-surface border border-border/40 shadow-sm text-primary">
-                      <span
-                        className="material-symbols-outlined text-[1.4rem]"
-                        style={{ fontVariationSettings: "'FILL' 1" }}
-                      >
-                        {entry.action_type.includes('regalo') ? 'redeem' : entry.action_type.includes('gasto') ? 'payments' : 'history'}
-                      </span>
-                    </div>
-                    <div className="pt-2 flex-1">
-                      <p className="text-sm font-bold text-text leading-tight">{entry.action_type}</p>
-                      <p className="text-[10px] font-black text-text-muted uppercase tracking-wider mt-1 opacity-50">
-                        {formatDate(entry.created_at, {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          day: "numeric",
-                          month: "short"
-                        })}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* CHAT */}
-        {activeTab === "chat" && (
-          <div className="animate-in fade-in slide-in-from-bottom-2 duration-400">
-            <EventChatTab eventId={eventId} />
-          </div>
-        )}
       </div>
     </AppShell>
   );

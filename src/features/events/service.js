@@ -1,4 +1,4 @@
-﻿import { requireSupabase } from "../../lib/supabase";
+import { requireSupabase } from "../../lib/supabase";
 
 export async function listEvents(userId) {
   const supabase = requireSupabase();
@@ -25,6 +25,15 @@ export async function listEvents(userId) {
             id,
             display_name,
             avatar_url
+          ),
+          participants:event_participants (
+            user_id,
+            role,
+            profiles (
+              id,
+              display_name,
+              avatar_url
+            )
           )
         )
       `
@@ -100,7 +109,7 @@ export async function getEventDetail(eventId) {
       .order("joined_at", { ascending: true }),
     supabase
       .from("gift_options")
-      .select("*")
+      .select("*, profiles!gift_options_proposed_by_fkey(display_name, avatar_url)")
       .eq("event_id", eventId)
       .order("created_at", { ascending: false }),
     supabase
@@ -260,6 +269,18 @@ export async function reviewShare(shareId, action) {
   return data;
 }
 
+export async function syncEventWishlist(eventId) {
+  const supabase = requireSupabase();
+  const { data, error } = await supabase.rpc("sync_event_wishlist", {
+    p_event_id: eventId
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
 export async function uploadPrivateFile(bucket, path, file) {
   const supabase = requireSupabase();
   const { error } = await supabase.storage.from(bucket).upload(path, file, {
@@ -333,4 +354,15 @@ export async function sendEventMessage(eventId, message, userId) {
     throw error;
   }
   return data;
+}
+
+export async function deleteEvent(eventId) {
+  const supabase = requireSupabase();
+  const { error } = await supabase.rpc("delete_event", {
+    p_event_id: eventId
+  });
+
+  if (error) {
+    throw error;
+  }
 }

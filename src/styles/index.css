@@ -38,4 +38,12 @@
   .app-frame {
     @apply mx-auto min-h-screen w-full max-w-[30rem] bg-bg pb-24;
   }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }

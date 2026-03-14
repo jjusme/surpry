@@ -20,17 +20,12 @@ import {
   savePaymentDestination,
   upsertProfile
 } from "../service";
-import { saveWishlistItem } from "../../wishlist/service";
 import { PAYMENT_DESTINATION_TYPES } from "../../../lib/constants";
 
 const schema = z.object({
   display_name: z.string().min(2, "Tu nombre debe tener al menos 2 caracteres."),
   birthday_day: z.coerce.number().min(1).max(31),
   birthday_month: z.coerce.number().min(1).max(12),
-  wishlist_title: z.string().optional(),
-  wishlist_url: z.string().optional(),
-  wishlist_notes: z.string().optional(),
-  wishlist_price: z.string().optional(),
   payment_type: z.string().optional(),
   payment_label: z.string().optional(),
   payment_bank_name: z.string().optional(),
@@ -76,10 +71,6 @@ export function ProfileSetupPage() {
       display_name: user?.user_metadata?.display_name || "",
       birthday_day: "",
       birthday_month: "",
-      wishlist_title: "",
-      wishlist_url: "",
-      wishlist_notes: "",
-      wishlist_price: "",
       payment_type: "",
       payment_label: "",
       payment_bank_name: "",
@@ -95,10 +86,6 @@ export function ProfileSetupPage() {
         display_name: profileQuery.data.display_name || user?.user_metadata?.display_name || "",
         birthday_day: profileQuery.data.birthday_day || "",
         birthday_month: profileQuery.data.birthday_month || "",
-        wishlist_title: "",
-        wishlist_url: "",
-        wishlist_notes: "",
-        wishlist_price: "",
         payment_type: "",
         payment_label: "",
         payment_bank_name: "",
@@ -112,15 +99,6 @@ export function ProfileSetupPage() {
   const saveMutation = useMutation({
     mutationFn: async (values) => {
       await upsertProfile(user.id, values);
-
-      if (values.wishlist_title) {
-        await saveWishlistItem(user.id, {
-          title: values.wishlist_title,
-          url: values.wishlist_url,
-          notes: values.wishlist_notes,
-          price_estimate: values.wishlist_price
-        });
-      }
 
       if (values.payment_type && values.payment_destination_value) {
         await savePaymentDestination(user.id, {
@@ -137,7 +115,6 @@ export function ProfileSetupPage() {
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["profile", user.id] }),
-        queryClient.invalidateQueries({ queryKey: ["wishlist", user.id] }),
         queryClient.invalidateQueries({ queryKey: ["payment-destinations", user.id] })
       ]);
       localStorage.setItem("has_completed_setup", "true");
@@ -173,15 +150,17 @@ export function ProfileSetupPage() {
     );
   }
 
+  const hasCompletedSetup = localStorage.getItem("has_completed_setup") === "true";
+
   return (
-    <AppShell hideNav header={<PageHeader title="Configura tu perfil" subtitle="Paso final" />}>
+    <AppShell hideNav header={<PageHeader title="Configura tu perfil" subtitle="Paso final" backTo={hasCompletedSetup ? "/perfil" : undefined} />}>
       <form className="space-y-4 pt-4 pb-12" onSubmit={onSubmit}>
         <div className="flex flex-col items-center gap-2 mb-4 text-center">
           <div className="size-20 rounded-[1.5rem] bg-primary/15 flex items-center justify-center mb-2">
             <span className="material-symbols-outlined text-[2.5rem] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>person_add</span>
           </div>
           <h2 className="text-2xl font-black text-text">Dinos quién eres</h2>
-          <p className="text-sm text-text-muted px-6">Para que tus amigos sepan cuándo es tu cumple y cómo enviarte sorpresas.</p>
+          <p className="text-sm text-text-muted px-6">Para que tus amigos sepan cuándo es tu cumple.</p>
         </div>
 
         <Card className="space-y-4">
@@ -206,58 +185,10 @@ export function ProfileSetupPage() {
           </div>
         </Card>
 
-        <Card className="space-y-4">
-          <div>
-            <h2 className="text-lg font-bold text-text">Sugerencia de regalo (Opcional)</h2>
-            <p className="text-sm text-text-muted">
-              Algo que siempre hayas querido. Facilítale el trabajo a tus cómplices.
-            </p>
-          </div>
-
-          <FormField label="Qué te gustaría">
-            <Input placeholder="Ej. Audífonos, curso, cena..." {...register("wishlist_title")} />
-          </FormField>
-          <FormField label="Link (opcional)">
-            <Input placeholder="https://..." {...register("wishlist_url")} />
-          </FormField>
-          <FormField label="Precio aprox (opcional)">
-            <Input type="number" placeholder="Ej. 1500" {...register("wishlist_price")} />
-          </FormField>
-        </Card>
-
-        <Card className="space-y-4">
-          <div>
-            <h2 className="text-lg font-bold text-text">¿Cómo recibir dinero? (Opcional)</h2>
-            <p className="text-sm text-text-muted">
-              Tus datos de banco para que te reembolsen gastos de otros regalos.
-            </p>
-          </div>
-
-          <FormField label="Tipo de cuenta">
-            <Select {...register("payment_type")}>
-              <option value="">Selecciona</option>
-              {PAYMENT_DESTINATION_TYPES.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </Select>
-          </FormField>
-          <FormField label="Banco y Titular">
-            <div className="grid grid-cols-2 gap-3">
-              <Input placeholder="Ej. BBVA" {...register("payment_bank_name")} />
-              <Input placeholder="Nombre" {...register("payment_account_holder")} />
-            </div>
-          </FormField>
-          <FormField label="CLABE / Tarjeta / Alias">
-            <Input placeholder="El dato para depositarte" {...register("payment_destination_value")} />
-          </FormField>
-        </Card>
-
         {serverError ? <p className="text-sm font-medium text-danger bg-danger/5 p-3 rounded-xl border border-danger/20">{serverError}</p> : null}
 
         <Button type="submit" size="pill" className="w-full h-14 text-lg font-black shadow-lg" disabled={!isSupabaseConfigured || isSubmitting || saveMutation.isPending}>
-          {isSubmitting || saveMutation.isPending ? "Configurando..." : "¡Listo, llévame al inicio!"}
+          {isSubmitting || saveMutation.isPending ? "Configurando..." : "¡Guardar!"}
         </Button>
       </form>
     </AppShell>

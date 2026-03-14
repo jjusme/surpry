@@ -14,6 +14,12 @@ export function ProtectedRoute() {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
+  const hasCompletedSetup = localStorage.getItem("has_completed_setup") === "true";
+
+  if (!hasCompletedSetup && location.pathname !== "/setup") {
+    return <Navigate to="/setup" replace />;
+  }
+
   return <Outlet />;
 }
 
