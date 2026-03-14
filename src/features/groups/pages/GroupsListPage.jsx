@@ -121,11 +121,6 @@ export function GroupsListPage() {
                           {members.length} cómplice{members.length !== 1 ? "s" : ""}
                         </p>
                       </div>
-                      {group.membership_role === "admin" && (
-                        <span className="rounded-full bg-primary/12 px-3 py-1 text-[10px] font-black uppercase tracking-[0.15em] text-primary-strong">
-                          Admin
-                        </span>
-                      )}
                     </div>
 
                     {nextBirthday && (
@@ -149,20 +144,6 @@ export function GroupsListPage() {
                         </Link>
                       </div>
                     )}
-
-                    <div className="flex items-center justify-between">
-                      <AvatarStack
-                        users={members.slice(0, 4).map((m) => ({
-                          id: m.user_id,
-                          name: m.profiles?.display_name,
-                          avatar_url: m.profiles?.avatar_url
-                        }))}
-                        max={3}
-                      />
-                      <span className="rounded-xl border border-border px-4 py-2 text-sm font-semibold text-text">
-                        Ver grupo →
-                      </span>
-                    </div>
                   </div>
                 </Card>
               </Link>

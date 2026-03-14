@@ -209,12 +209,12 @@ export function HomePage() {
                   {formatCurrency(sharesQuery.data.reduce((acc, s) => acc + Number(s.amount_due || 0), 0))}
                 </h3>
               </div>
-              <Button 
-                size="md" 
-                className="h-10 px-5 font-black text-[11px] uppercase tracking-wider shadow-lg bg-primary text-slate-900 hover:bg-primary-strong border-none rounded-full" 
+              <Button
+                size="md"
+                className="h-10 px-5 font-black text-[11px] uppercase tracking-wider shadow-lg bg-primary text-slate-900 hover:bg-primary-strong border-none rounded-full"
                 onClick={() => navigate(`/shares/${sharesQuery.data[0].id}`)}
               >
-                Pagar ya
+                Pagar
               </Button>
             </div>
           </div>
@@ -305,13 +305,13 @@ export function HomePage() {
                           </span>
                         </div>
                         <div className="min-w-0">
-                          <h3 className="text-lg font-black text-text truncate">Para {event.birthday_profile?.display_name?.split(" ")[0] || "Alguien"}</h3>
+                          <h3 className="text-lg font-black text-text truncate">Cumple de {event.birthday_profile?.display_name?.split(" ")[0] || "Alguien"}</h3>
                           <p className="text-[10px] font-bold text-text-muted truncate uppercase tracking-wider">
                             {event.groups?.name}
                           </p>
                         </div>
                       </div>
-                      <StatusBadge status={event.status} />
+                      {/* <StatusBadge status={event.status} /> */}
                     </div>
 
                     <div className="space-y-3">
@@ -322,7 +322,7 @@ export function HomePage() {
                             <span className="text-primary">{progress}%</span>
                           </div>
                           <div className="h-2 w-full bg-surface-muted rounded-full overflow-hidden">
-                            <div 
+                            <div
                               className="h-full bg-primary transition-all duration-1000 ease-out"
                               style={{ width: `${progress}%` }}
                             />
@@ -332,11 +332,12 @@ export function HomePage() {
 
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <AvatarStack 
-                            users={participants.map((p) => ({ id: p.user_id, name: p.profiles?.display_name, avatar_url: p.profiles?.avatar_url }))} 
-                            max={3} 
-                          />
+                          {/* <AvatarStack
+                            users={participants.map((p) => ({ id: p.user_id, name: p.profiles?.display_name, avatar_url: p.profiles?.avatar_url }))}
+                            max={3}
+                          /> */}
                           <span className="text-[10px] font-black text-text-muted uppercase">{participants.length} Cómplices</span>
+                          <StatusBadge status={event.status} />
                         </div>
                         {priceEstimate > 0 && (
                           <p className="text-[11px] font-black text-text">

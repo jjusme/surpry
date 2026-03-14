@@ -10,8 +10,6 @@ import { EmptyState } from "../../../components/feedback/EmptyState";
 import { useAuth } from "../../auth/AuthContext";
 import { listEvents } from "../service";
 import { formatDate } from "../../../utils/format";
-import { Avatar } from "../../../components/ui/Avatar";
-import { AvatarStack } from "../../../components/ui/AvatarStack";
 
 export function EventsListPage() {
   const { user, isSupabaseConfigured } = useAuth();
@@ -57,7 +55,7 @@ export function EventsListPage() {
                   <h3 className="text-[15px] font-black text-text truncate leading-tight">
                     Cumple de {event.birthday_profile?.display_name?.split(" ")[0] || "Alguien"}
                   </h3>
-                  <div className="flex items-center gap-2 mt-0.5 text-[10px] font-bold text-text-muted/60 uppercas">
+                  <div className="flex items-center gap-2 mt-0.5 text-[10px] font-bold text-text-muted/60">
                     <span className="truncate max-w-[120px]">{event.groups?.name || 'Privado'}</span>
                     <span className="opacity-40">•</span>
                     <span>{event.participants?.length || 0} {event.participants?.length === 1 ? 'Cómplice' : 'Cómplices'}</span>
