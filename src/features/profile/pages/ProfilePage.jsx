@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "react-hot-toast";
 import { AppShell } from "../../../components/layout/AppShell";
 import { PageHeader } from "../../../components/layout/PageHeader";
 import { Button } from "../../../components/ui/Button";
@@ -8,9 +9,10 @@ import { LoadingState } from "../../../components/feedback/LoadingState";
 import { ErrorState } from "../../../components/feedback/ErrorState";
 import { useAuth } from "../../auth/AuthContext";
 import { signOut } from "../../auth/api";
-import { getMyProfile, listPaymentDestinations } from "../service";
+import { getMyProfile, listPaymentDestinations, uploadAvatar, upsertProfile } from "../service";
 import { listMyWishlist } from "../../wishlist/service";
 import { formatBirthday } from "../../../utils/format";
+import { useState } from "react";
 
 const ROW_ITEMS = [
   {
@@ -38,7 +40,9 @@ const ROW_ITEMS = [
 
 export function ProfilePage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { user, isSupabaseConfigured } = useAuth();
+  const [isUploading, setIsUploading] = useState(false);
 
   const profileQuery = useQuery({
     queryKey: ["profile", user?.id],
@@ -59,6 +63,23 @@ export function ProfilePage() {
     mutationFn: signOut,
     onSuccess: () => navigate("/login", { replace: true })
   });
+
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const url = await uploadAvatar(user.id, file);
+      await upsertProfile(user.id, { avatar_url: url });
+      await queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
+      toast.success("Foto actualizada");
+    } catch (error) {
+      toast.error("Error al actualizar foto");
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   if (!user) return <LoadingState message="Cargando perfil..." fullScreen />;
 
@@ -111,25 +132,25 @@ export function ProfilePage() {
       <div className="space-y-6 pt-4">
         {/* Profile hero */}
         <div className="flex flex-col items-center gap-4 py-4 px-4 bg-gradient-to-b from-primary/10 to-transparent rounded-[3rem] -mx-2">
-          <Avatar
-            name={displayName}
-            url={profile?.avatar_url}
-            className="size-28 text-2xl shadow-xl ring-offset-4 ring-offset-bg"
-            ring
-            badge={
-              <button
-                onClick={() => navigate("/onboarding")}
-                className="flex size-10 items-center justify-center rounded-full bg-slate-950 text-white shadow-float active:scale-90 transition-transform"
-              >
-                <span
-                  className="material-symbols-outlined text-[1.1rem]"
-                  style={{ fontVariationSettings: "'FILL' 1" }}
-                >
-                  edit
-                </span>
-              </button>
-            }
-          />
+          <div className="relative">
+            <Avatar
+              name={displayName}
+              url={profile?.avatar_url}
+              className="size-28 text-2xl shadow-xl ring-offset-4 ring-offset-bg"
+              ring
+            />
+            {isUploading && (
+              <div className="absolute inset-0 bg-slate-900/60 rounded-full flex items-center justify-center p-[3px]">
+                <div className="size-full bg-slate-900/40 rounded-full flex items-center justify-center">
+                  <span className="material-symbols-outlined text-white animate-spin">sync</span>
+                </div>
+              </div>
+            )}
+            <label className="absolute -bottom-1 -right-1 size-10 bg-primary text-slate-950 rounded-2xl flex items-center justify-center cursor-pointer shadow-float hover:scale-110 active:scale-95 transition-all">
+              <input type="file" className="hidden" accept="image/*" onChange={handleAvatarChange} disabled={isUploading} />
+              <span className="material-symbols-outlined text-[1.25rem]">photo_camera</span>
+            </label>
+          </div>
           <div className="text-center">
             <h2 className="text-2xl font-black text-text tracking-tight">{displayName}</h2>
             <p className="text-sm font-medium text-text-muted">{user.email}</p>

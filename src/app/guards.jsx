@@ -1,4 +1,4 @@
-﻿import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { LoadingState } from "../components/feedback/LoadingState";
 import { useAuth } from "../features/auth/AuthContext";
 
@@ -18,6 +18,11 @@ export function ProtectedRoute() {
 
   if (!hasCompletedSetup && location.pathname !== "/setup") {
     return <Navigate to="/setup" replace />;
+  }
+
+  const pendingInvite = localStorage.getItem("pending_invite_token");
+  if (pendingInvite && location.pathname === "/inicio") {
+    return <Navigate to={`/join/${pendingInvite}`} replace />;
   }
 
   return <Outlet />;

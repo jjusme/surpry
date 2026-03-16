@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -44,7 +44,11 @@ export function LoginPage() {
     setServerError("");
     setIsGoogleLoading(true);
     try {
-      await signInWithGoogle();
+      const pendingToken = localStorage.getItem("pending_invite_token");
+      const redirectTo = pendingToken 
+        ? `${window.location.origin}/join/${pendingToken}`
+        : `${window.location.origin}/inicio`;
+      await signInWithGoogle(redirectTo);
     } catch (error) {
       setServerError(error.message);
       setIsGoogleLoading(false);

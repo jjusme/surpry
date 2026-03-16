@@ -17,6 +17,7 @@ import { ErrorState } from "../../../components/feedback/ErrorState";
 import { useAuth } from "../../auth/AuthContext";
 import {
   getMyProfile,
+  uploadAvatar,
   upsertProfile
 } from "../service";
 
@@ -46,6 +47,8 @@ export function ProfileSetupPage() {
   const queryClient = useQueryClient();
   const { user, isSupabaseConfigured } = useAuth();
   const [serverError, setServerError] = useState("");
+  const [avatarPreview, setAvatarPreview] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
   const profileQuery = useQuery({
     queryKey: ["profile", user?.id],
     queryFn: () => getMyProfile(user.id),
@@ -73,6 +76,9 @@ export function ProfileSetupPage() {
         birthday_day: profileQuery.data.birthday_day || "",
         birthday_month: profileQuery.data.birthday_month || ""
       });
+      if (profileQuery.data.avatar_url) {
+        setAvatarPreview(profileQuery.data.avatar_url);
+      }
     }
   }, [profileQuery.data, reset, user?.user_metadata?.display_name]);
 
@@ -93,9 +99,24 @@ export function ProfileSetupPage() {
     }
   });
 
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const url = await uploadAvatar(user.id, file);
+      setAvatarPreview(url);
+    } catch (error) {
+      toast.error("Error al subir imagen");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const onSubmit = handleSubmit(async (values) => {
     setServerError("");
-    await saveMutation.mutateAsync(values);
+    await saveMutation.mutateAsync({ ...values, avatar_url: avatarPreview });
   });
 
   if (!user) {
@@ -124,11 +145,28 @@ export function ProfileSetupPage() {
     <AppShell hideNav header={<PageHeader title="Configura tu perfil" subtitle="Paso final" backTo={hasCompletedSetup ? "/perfil" : undefined} />}>
       <form className="space-y-4 pt-4 pb-12" onSubmit={onSubmit}>
         <div className="flex flex-col items-center gap-2 mb-4 text-center">
-          <div className="size-20 rounded-[1.5rem] bg-primary/15 flex items-center justify-center mb-2">
-            <span className="material-symbols-outlined text-[2.5rem] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>person_add</span>
+          <div className="relative group">
+            <div className="size-24 rounded-[2rem] bg-primary/15 flex items-center justify-center overflow-hidden ring-4 ring-bg shadow-float">
+              {avatarPreview ? (
+                <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                <span className="material-symbols-outlined text-[3rem] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>person</span>
+              )}
+              {isUploading && (
+                <div className="absolute inset-0 bg-slate-900/60 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-white animate-spin">sync</span>
+                </div>
+              )}
+            </div>
+            <label className="absolute -bottom-1 -right-1 size-10 bg-primary text-slate-950 rounded-2xl flex items-center justify-center cursor-pointer shadow-float hover:scale-110 active:scale-95 transition-all">
+              <input type="file" className="hidden" accept="image/*" onChange={handleAvatarChange} disabled={isUploading} />
+              <span className="material-symbols-outlined text-[1.25rem]">add_a_photo</span>
+            </label>
           </div>
-          <h2 className="text-2xl font-black text-text">Dinos quién eres</h2>
-          <p className="text-sm text-text-muted px-6">Para que tus amigos sepan cuándo es tu cumple.</p>
+          <div className="mt-2">
+            <h2 className="text-2xl font-black text-text">Dinos quién eres</h2>
+            <p className="text-sm text-text-muted px-6">Para que tus amigos sepan cuándo es tu cumple.</p>
+          </div>
         </div>
 
         <Card className="space-y-4">

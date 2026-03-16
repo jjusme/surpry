@@ -1,4 +1,5 @@
-﻿import { Link, useNavigate, useParams } from "react-router-dom";
+import { useEffect } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { AppShell } from "../../../components/layout/AppShell";
 import { PageHeader } from "../../../components/layout/PageHeader";
@@ -19,6 +20,17 @@ export function JoinGroupPage() {
     queryFn: () => getInviteByToken(token),
     enabled: Boolean(token && isSupabaseConfigured)
   });
+
+  // Persist token for post-auth redirection
+  useEffect(() => {
+    if (token) {
+      if (!user) {
+        localStorage.setItem("pending_invite_token", token);
+      } else {
+        localStorage.removeItem("pending_invite_token");
+      }
+    }
+  }, [token, user]);
 
   const acceptMutation = useMutation({
     mutationFn: () => acceptInvite(token),

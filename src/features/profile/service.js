@@ -1,4 +1,4 @@
-﻿import { requireSupabase } from "../../lib/supabase";
+import { requireSupabase } from "../../lib/supabase";
 
 export async function getMyProfile(userId) {
   const supabase = requireSupabase();
@@ -99,4 +99,25 @@ export async function deletePaymentDestination(id) {
   if (error) {
     throw error;
   }
+}
+
+export async function uploadAvatar(userId, file) {
+  const supabase = requireSupabase();
+  const fileExt = file.name.split('.').pop();
+  const fileName = `${userId}/${Math.random()}.${fileExt}`;
+  const filePath = `${fileName}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from('avatars')
+    .upload(filePath, file);
+
+  if (uploadError) {
+    throw uploadError;
+  }
+
+  const { data } = supabase.storage
+    .from('avatars')
+    .getPublicUrl(filePath);
+
+  return data.publicUrl;
 }

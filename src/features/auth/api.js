@@ -1,4 +1,4 @@
-﻿import { requireSupabase } from "../../lib/supabase";
+import { requireSupabase } from "../../lib/supabase";
 
 export async function signInWithPassword(values) {
   const supabase = requireSupabase();
@@ -26,9 +26,9 @@ export async function signUpWithPassword(values) {
   }
 }
 
-export async function signInWithGoogle() {
+export async function signInWithGoogle(redirectToOverride) {
   const supabase = requireSupabase();
-  const redirectTo = `${window.location.origin}/inicio`;
+  const redirectTo = redirectToOverride || `${window.location.origin}/inicio`;
   const { error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
