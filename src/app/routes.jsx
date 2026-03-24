@@ -19,9 +19,11 @@ function withSuspense(element) {
 const ForgotPasswordPage = lazyPage(() => import("../features/auth/pages/ForgotPasswordPage"), "ForgotPasswordPage");
 const LoginPage = lazyPage(() => import("../features/auth/pages/LoginPage"), "LoginPage");
 const RegisterPage = lazyPage(() => import("../features/auth/pages/RegisterPage"), "RegisterPage");
+const UpcomingBirthdaysPage = lazyPage(() => import("../features/home/pages/UpcomingBirthdaysPage"), "UpcomingBirthdaysPage");
 const HomePage = lazyPage(() => import("../features/home/pages/HomePage"), "HomePage");
 const EventsListPage = lazyPage(() => import("../features/events/pages/EventsListPage"), "EventsListPage");
 const EventDetailPage = lazyPage(() => import("../features/events/pages/EventDetailPage"), "EventDetailPage");
+const CreateGatheringPage = lazyPage(() => import("../features/events/pages/CreateGatheringPage"), "CreateGatheringPage");
 const GroupsListPage = lazyPage(() => import("../features/groups/pages/GroupsListPage"), "GroupsListPage");
 const GroupDetailPage = lazyPage(() => import("../features/groups/pages/GroupDetailPage"), "GroupDetailPage");
 const JoinGroupPage = lazyPage(() => import("../features/groups/pages/JoinGroupPage"), "JoinGroupPage");
@@ -60,13 +62,16 @@ export const router = createBrowserRouter([
       { path: "/setup", element: withSuspense(<ProfileSetupPage />) },
       { path: "/onboarding", element: <Navigate to="/setup" replace /> },
       { path: "/inicio", element: withSuspense(<HomePage />) },
+      { path: "/cumpleanios", element: withSuspense(<UpcomingBirthdaysPage />) },
       { path: "/notificaciones", element: withSuspense(<NotificationsPage />) },
       { path: "/grupos", element: withSuspense(<GroupsListPage />) },
       { path: "/grupos/:groupId", element: withSuspense(<GroupDetailPage />) },
       { path: "/eventos", element: withSuspense(<EventsListPage />) },
+      { path: "/eventos/nuevo-convivio", element: withSuspense(<CreateGatheringPage />) },
       { path: "/eventos/:eventId", element: withSuspense(<EventDetailPage />) },
       { path: "/wishlist", element: withSuspense(<WishlistPage />) },
       { path: "/perfil", element: withSuspense(<ProfilePage />) },
+      { path: "/perfil/:userId", element: withSuspense(<ProfilePage />) },
       { path: "/perfil/metodos", element: withSuspense(<PaymentMethodsPage />) },
       { path: "/shares/:shareId", element: withSuspense(<ShareDetailPage />) }
     ]

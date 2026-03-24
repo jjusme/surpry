@@ -1,8 +1,9 @@
-﻿import { Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { cn } from "../../utils/cn";
 
 const items = [
   { id: "inicio", label: "Inicio", to: "/inicio", icon: "home" },
+  { id: "banco", label: "Banco", to: "/cumpleanios", icon: "cake" },
   { id: "grupos", label: "Grupos", to: "/grupos", icon: "groups" },
   { id: "eventos", label: "Eventos", to: "/eventos", icon: "celebration" },
   { id: "perfil", label: "Perfil", to: "/perfil", icon: "person" }

@@ -54,6 +54,8 @@ export function EventDetailPage() {
   const [selectedParticipants, setSelectedParticipants] = useState([]);
   const [receiptFile, setReceiptFile] = useState(null);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [splitType, setSplitType] = useState("equal");
+  const [customAmounts, setCustomAmounts] = useState({});
 
   const detailQuery = useQuery({
     queryKey: ["event-detail", eventId],
@@ -127,13 +129,19 @@ export function EventDetailPage() {
         ...values,
         event_id: eventId,
         paid_by_user_id: user.id,
-        receipt_path: receiptPath
+        receipt_path: receiptPath,
+        split_type: splitType,
+        custom_amounts: splitType === "manual" 
+          ? values.participant_ids.map(id => Number(customAmounts[id] || 0))
+          : null
       });
     },
     onSuccess: async () => {
       setExpenseForm(initialExpenseForm);
       setReceiptFile(null);
       setSelectedParticipants([]);
+      setSplitType("equal");
+      setCustomAmounts({});
       toast.success("Gasto registrado y dividido");
       await queryClient.invalidateQueries({ queryKey: ["event-detail", eventId] });
     },
@@ -202,9 +210,21 @@ export function EventDetailPage() {
   );
 
   const toggleParticipant = (pid) =>
-    setSelectedParticipants((cur) =>
-      cur.includes(pid) ? cur.filter((id) => id !== pid) : [...cur, pid]
-    );
+    setSelectedParticipants((cur) => {
+      const isSelected = cur.includes(pid);
+      if (isSelected) {
+        const next = cur.filter((id) => id !== pid);
+        const nextCustom = { ...customAmounts };
+        delete nextCustom[pid];
+        setCustomAmounts(nextCustom);
+        return next;
+      }
+      return [...cur, pid];
+    });
+
+  const handleCustomAmountChange = (pid, value) => {
+    setCustomAmounts(prev => ({ ...prev, [pid]: value }));
+  };
 
   const submitGift = async (e) => {
     e.preventDefault();
@@ -214,9 +234,18 @@ export function EventDetailPage() {
   const submitExpense = async (e) => {
     e.preventDefault();
     if (selectedParticipants.length === 0) {
-      toast.error("Selecciona al menos un cómplice para dividir el gasto.");
+      toast.error("Selecciona al menos un participante para dividir el gasto.");
       return;
     }
+
+    if (splitType === "manual") {
+      const total = Object.values(customAmounts).reduce((acc, val) => acc + Number(val || 0), 0);
+      if (Math.abs(total - Number(expenseForm.amount)) > 0.01) {
+        toast.error(`La suma de los montos ($${total}) debe ser igual al total del gasto ($${expenseForm.amount})`);
+        return;
+      }
+    }
+
     await expenseMutation.mutateAsync({ ...expenseForm, participant_ids: selectedParticipants });
   };
 
@@ -243,8 +272,8 @@ export function EventDetailPage() {
       activeTab="eventos"
       header={
         <PageHeader
-          subtitle="Plan Sorpresa"
-          title={event?.birthday_profile?.display_name || "Sorpresa"}
+          subtitle={event?.event_type === 'gathering' ? 'Convivio' : 'Plan Sorpresa'}
+          title={event?.event_type === 'gathering' ? (event?.title || 'Convivio') : (event?.birthday_profile?.display_name || 'Sorpresa')}
           backTo="/eventos"
         />
       }
@@ -253,21 +282,32 @@ export function EventDetailPage() {
         {/* Hero */}
         <div className="flex flex-col items-center gap-3 py-4 text-center animate-in fade-in zoom-in duration-500">
           <div className="relative">
-            <Avatar
-              name={event?.birthday_profile?.display_name}
-              url={event?.birthday_profile?.avatar_url}
-              className="size-28 text-2xl ring-4 ring-bg shadow-float"
-              ring
-            />
-            <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-primary px-3 py-0.5 text-[10px] font-black uppercase tracking-[0.15em] text-slate-950 shadow-float ring-2 ring-bg">
-              Cumpleañero
+            {event?.event_type === 'gathering' ? (
+              <div className="size-28 rounded-[2.5rem] bg-primary/10 flex items-center justify-center ring-4 ring-bg shadow-float">
+                <span className="material-symbols-outlined text-primary text-5xl">groups</span>
+              </div>
+            ) : (
+              <Avatar
+                name={event?.birthday_profile?.display_name}
+                url={event?.birthday_profile?.avatar_url}
+                className="size-28 text-2xl ring-4 ring-bg shadow-float"
+                ring
+              />
+            )}
+            <span className={cn(
+               "absolute -bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full px-3 py-0.5 text-[10px] font-black uppercase tracking-[0.15em] shadow-float ring-2 ring-bg",
+               event?.event_type === 'gathering' ? "bg-text text-bg" : "bg-primary text-slate-950"
+            )}>
+              {event?.event_type === 'gathering' ? 'Convivio' : 'Cumpleañero'}
             </span>
           </div>
           <div className="mt-3 space-y-1">
             <h2 className="text-2xl font-black text-text tracking-tight">
-              {event?.birthday_profile?.display_name}
+              {event?.event_type === 'gathering' ? event?.title : event?.birthday_profile?.display_name}
             </h2>
-            <p className="text-sm font-medium italic text-text-muted">"¡Shhh! Es un plan secreto."</p>
+            <p className="text-sm font-medium italic text-text-muted">
+              {event?.event_type === 'gathering' ? "¡Momento de organizar!" : "¡Shhh! Es un plan secreto."}
+            </p>
             <div className="inline-flex items-center gap-1.5 rounded-full bg-surface-muted px-4 py-1.5 border border-border/50">
               <span
                 className="material-symbols-outlined text-[1rem] text-primary"
@@ -276,7 +316,8 @@ export function EventDetailPage() {
                 calendar_today
               </span>
               <span className="text-xs font-bold text-text">
-                Festa: {formatDate(event?.birthday_date, { day: "numeric", month: "long" }).toUpperCase()}
+                {event?.event_type === 'gathering' ? 'Día: ' : 'Festa: '}
+                {formatDate(event?.birthday_date, { day: "numeric", month: "long" }).toUpperCase()}
               </span>
             </div>
           </div>
@@ -284,7 +325,10 @@ export function EventDetailPage() {
           {/* Countdown */}
           {event?.birthday_date && (
             <div className="w-full pt-2">
-              <CountdownTimer targetDate={event.birthday_date} />
+              <CountdownTimer
+                targetDate={event.birthday_date}
+                passedLabel={event?.event_type === 'gathering' ? '¡Es hoy! 🎉' : '¡El cumpleaños ha llegado! 🎉'}
+              />
             </div>
           )}
         </div>
@@ -292,7 +336,9 @@ export function EventDetailPage() {
         {/* Tab bar */}
         <div className="sticky top-[3.75rem] z-10 -mx-4 border-b border-border bg-bg/95 backdrop-blur-md">
           <div className="flex gap-1 overflow-x-auto no-scrollbar px-4 after:content-[''] after:w-4 after:flex-shrink-0 snap-x" style={{ scrollbarWidth: "none" }}>
-            {EVENT_TABS.map((tab) => (
+            {EVENT_TABS
+              .filter(tab => event?.event_type !== 'gathering' || tab.id !== 'regalo')
+              .map((tab) => (
               <button
                 key={tab.id}
                 type="button"
@@ -317,7 +363,7 @@ export function EventDetailPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted mb-1">
-                    Estado del plan
+                    {event?.event_type === 'gathering' ? 'Estado del convivio' : 'Estado del plan'}
                   </p>
                   <StatusBadge status={event?.status}>
                     {event?.status === 'active' ? 'EN MARCHA' : event?.status.toUpperCase()}
@@ -345,9 +391,9 @@ export function EventDetailPage() {
             <div className="space-y-3">
               <div className="flex items-center justify-between px-1">
                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">
-                  Cómplices activos
+                  {event?.event_type === 'gathering' ? 'Participantes' : 'Cómplices activos'}
                 </p>
-                <span className="text-xs font-black text-primary">{participants.length} conectados</span>
+                <span className="text-xs font-black text-primary">{participants.length} {event?.event_type === 'gathering' ? 'personas' : 'conectados'}</span>
               </div>
               <div className="grid gap-2">
                 {participants.map((p) => (
@@ -356,26 +402,28 @@ export function EventDetailPage() {
                     className="flex items-center gap-3 rounded-2xl bg-surface/50 border border-border/40 px-4 py-3 transition-colors hover:bg-surface"
                   >
                     <Avatar
-                      name={p.profiles?.display_name}
+                      name={p.is_virtual ? p.display_name : p.profiles?.display_name}
                       url={p.profiles?.avatar_url}
-                      className="size-10 ring-2 ring-bg"
+                      className={cn("size-10 ring-2 ring-bg", p.is_virtual && "opacity-60")}
                     />
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-bold text-text">
-                        {p.profiles?.display_name}
+                        {p.is_virtual ? p.display_name : p.profiles?.display_name}
                       </p>
                       <p className="text-[10px] font-black uppercase tracking-wider text-text-muted">
-                        {p.role === 'organizer' ? 'ORGANIZADOR' : 'CÓMPLICE'}
+                        {p.is_virtual ? 'INVITADO EXTERNO' : (p.role === 'organizer' ? 'ORGANIZADOR' : 'CÓMPLICE')}
                       </p>
                     </div>
-                    <div className="flex size-7 items-center justify-center rounded-full bg-success/10">
-                      <span
-                        className="material-symbols-outlined text-[1rem] text-success"
-                        style={{ fontVariationSettings: "'FILL' 1" }}
-                      >
-                        check_circle
-                      </span>
-                    </div>
+                    {!p.is_virtual && (
+                      <div className="flex size-7 items-center justify-center rounded-full bg-success/10">
+                        <span
+                          className="material-symbols-outlined text-[1rem] text-success"
+                          style={{ fontVariationSettings: "'FILL' 1" }}
+                        >
+                          check_circle
+                        </span>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -596,23 +644,68 @@ export function EventDetailPage() {
                   </Select>
                 </FormField>
                 <div className="space-y-4">
-                  <p className="text-xs font-black uppercase tracking-[0.2em] text-text-muted px-1">Dividir con:</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {participants.map((p) => (
+                  <div className="flex items-center justify-between px-1">
+                    <p className="text-xs font-black uppercase tracking-[0.2em] text-text-muted">Dividir con:</p>
+                    <div className="flex bg-surface-muted p-1 rounded-xl border border-border/40">
                       <button
-                        key={p.id}
                         type="button"
                         className={cn(
-                          "flex items-center gap-2 p-3 rounded-2xl border text-left transition-all",
-                          selectedParticipants.includes(p.user_id)
-                            ? "bg-primary/10 border-primary text-text shadow-sm"
-                            : "bg-surface border-border/50 text-text-muted grayscale-[0.5] opacity-60"
+                          "px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all",
+                          splitType === "equal" ? "bg-bg text-primary shadow-sm" : "text-text-muted"
                         )}
-                        onClick={() => toggleParticipant(p.user_id)}
+                        onClick={() => setSplitType("equal")}
                       >
-                        <Avatar name={p.profiles?.display_name} url={p.profiles?.avatar_url} className="size-6" />
-                        <span className="text-xs font-bold truncate">{p.profiles?.display_name?.split(" ")[0]}</span>
+                        Por igual
                       </button>
+                      <button
+                        type="button"
+                        className={cn(
+                          "px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all",
+                          splitType === "manual" ? "bg-bg text-primary shadow-sm" : "text-text-muted"
+                        )}
+                        onClick={() => setSplitType("manual")}
+                      >
+                        Manual
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-2">
+                    {participants.map((p) => (
+                      <div key={p.id} className="space-y-2">
+                        <button
+                          type="button"
+                          className={cn(
+                            "flex items-center justify-between gap-2 p-3 rounded-2xl border text-left transition-all w-full",
+                            selectedParticipants.includes(p.id)
+                              ? "bg-primary/10 border-primary text-text shadow-sm"
+                              : "bg-surface border-border/50 text-text-muted grayscale-[0.5] opacity-60"
+                          )}
+                          onClick={() => toggleParticipant(p.id)}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Avatar name={p.is_virtual ? p.display_name : p.profiles?.display_name} url={p.profiles?.avatar_url} className="size-6" />
+                            <span className="text-xs font-bold truncate">{p.is_virtual ? p.display_name : p.profiles?.display_name?.split(" ")[0]}</span>
+                          </div>
+                          {selectedParticipants.includes(p.id) && splitType === "equal" && expenseForm.amount && (
+                            <span className="text-[10px] font-black text-primary bg-bg px-2 py-1 rounded-lg">
+                              {formatCurrency(Number(expenseForm.amount) / selectedParticipants.length)}
+                            </span>
+                          )}
+                        </button>
+                        
+                        {selectedParticipants.includes(p.id) && splitType === "manual" && (
+                          <div className="px-2 animate-in slide-in-from-top-1 duration-200">
+                            <Input
+                              type="number"
+                              placeholder="Monto para esta persona"
+                              className="h-10 text-xs font-bold bg-bg border-primary/20"
+                              value={customAmounts[p.id] || ""}
+                              onChange={(e) => handleCustomAmountChange(p.id, e.target.value)}
+                            />
+                          </div>
+                        )}
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -659,23 +752,49 @@ export function EventDetailPage() {
                     </div>
                     <div className="rounded-2xl bg-surface-muted/50 p-4 border border-border/30">
                       <p className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">
-                        División entre cómplices
+                        División del gasto ({expense.split_type === 'manual' ? 'PERSONALIZADA' : 'EQUIPARADA'})
                       </p>
                       <div className="space-y-2.5">
-                        {(expense.shares || []).map((share) => (
-                          <div key={share.id} className="flex items-center justify-between text-xs">
-                            <span className="font-bold text-text-muted flex items-center gap-2">
-                              <span className={cn(
-                                "size-1.5 rounded-full",
-                                share.status === 'confirmed' ? "bg-success" : "bg-warning"
-                              )}></span>
-                              {share.user_id === user?.id ? "Tú" : participants.find(p => p.user_id === share.user_id)?.profiles?.display_name?.split(" ")[0]}
-                            </span>
-                            <span className="font-black text-text">
-                              {formatCurrency(share.amount_due)} <span className="text-[9px] opacity-40 ml-1 font-bold">({share.status.toUpperCase()})</span>
-                            </span>
-                          </div>
-                        ))}
+                        {(expense.shares || []).map((share) => {
+                          const participant = participants.find(p => p.id === share.participant_id);
+                          const participantName = share.user_id === user?.id ? 'Tú' : (
+                            participant?.display_name ||
+                            participant?.profiles?.display_name?.split(' ')[0] ||
+                            'Alguien'
+                          );
+                          const isVirtual = participant?.is_virtual;
+                          const canConfirmDirectly = expense.paid_by_user_id === user?.id &&
+                            (isVirtual) && share.status === 'pending';
+                          return (
+                            <div key={share.id} className="flex items-center justify-between text-xs gap-2">
+                              <span className="font-bold text-text-muted flex items-center gap-2 min-w-0">
+                                <span className={cn(
+                                  "size-1.5 flex-shrink-0 rounded-full",
+                                  share.status === 'confirmed' ? 'bg-success' : share.status === 'pending' ? 'bg-warning' : 'bg-primary'
+                                )}></span>
+                                <span className="truncate">{participantName}</span>
+                                {isVirtual && <span className="text-[8px] uppercase font-black opacity-40">ext</span>}
+                              </span>
+                              <div className="flex items-center gap-1.5 flex-shrink-0">
+                                <span className="font-black text-text">
+                                  {formatCurrency(share.amount_due)}
+                                </span>
+                                {canConfirmDirectly ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => reviewMutation.mutate({ shareId: share.id, action: 'confirmed' })}
+                                    disabled={reviewMutation.isPending}
+                                    className="text-[9px] font-black uppercase tracking-wide bg-success/10 text-success border border-success/20 px-2 py-0.5 rounded-full hover:bg-success/20 transition-colors"
+                                  >
+                                    Confirmar
+                                  </button>
+                                ) : (
+                                  <span className="text-[9px] opacity-40 font-bold">({share.status.toUpperCase()})</span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   </Card>
@@ -726,8 +845,8 @@ export function EventDetailPage() {
             </Card>
 
             <Card className="space-y-5 p-5 shadow-sm border-t-4 border-success/30">
-              <h3 className="text-lg font-black text-text tracking-tight">Confirmar recibos</h3>
-              <p className="text-xs font-medium text-text-muted leading-relaxed">Confirma cuando un cómplice te haya pagado para cerrar el saldo.</p>
+              <h3 className="text-lg font-black text-text tracking-tight">Confirmar pagos recibidos</h3>
+              <p className="text-xs font-medium text-text-muted leading-relaxed">Confirma cuando alguien te haya pagado para cerrar el saldo.</p>
               {sharesToReview.length === 0 ? (
                 <p className="text-sm font-medium text-text-muted italic opacity-60 text-center py-2">No hay pagos por revisar por ahora.</p>
               ) : (

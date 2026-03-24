@@ -1,4 +1,4 @@
-﻿import { defineConfig } from "vite";
+import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
@@ -7,13 +7,13 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+      includeAssets: ['surpry.png', 'icon.svg'],
       manifest: {
         name: 'Surpry',
         short_name: 'Surpry',
         description: 'Organiza Regalos Sorpresa en Grupo',
-        theme_color: '#09090b',
-        background_color: '#09090b',
+        theme_color: '#0df2f2',
+        background_color: '#0b1218',
         display: 'standalone',
         icons: [
           {

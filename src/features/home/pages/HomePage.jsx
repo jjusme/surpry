@@ -18,6 +18,7 @@ import { listGroups } from "../../groups/service";
 import { listEvents } from "../../events/service";
 import { requireSupabase } from "../../../lib/supabase";
 import { formatDate, formatCurrency } from "../../../utils/format";
+import { cn } from "../../../utils/cn";
 
 async function getPendingShares(userId) {
   const supabase = requireSupabase();
@@ -54,6 +55,16 @@ async function getNotifications(userId) {
     .is("read_at", null)
     .order("created_at", { ascending: false })
     .limit(5);
+  if (error) throw error;
+  return data ?? [];
+}
+
+async function listManualBirthdays(userId) {
+  const supabase = requireSupabase();
+  const { data, error } = await supabase
+    .from("manual_birthdays")
+    .select("*")
+    .eq("user_id", userId);
   if (error) throw error;
   return data ?? [];
 }
@@ -97,6 +108,12 @@ export function HomePage() {
   const reportedSharesQuery = useQuery({
     queryKey: ["reported-shares", user?.id],
     queryFn: () => getReportedShares(user.id),
+    enabled: Boolean(user?.id && isSupabaseConfigured)
+  });
+
+  const manualBirthdaysQuery = useQuery({
+    queryKey: ["manual-birthdays", user?.id],
+    queryFn: () => listManualBirthdays(user.id),
     enabled: Boolean(user?.id && isSupabaseConfigured)
   });
 
@@ -155,11 +172,27 @@ export function HomePage() {
     (g.members || []).filter(
       (m) => m.user_id !== user.id && m.profiles?.birthday_day
     ).map((m) => ({
-      ...m.profiles,
-      days: daysUntilBirthday(m.profiles.birthday_day, m.profiles.birthday_month)
+      id: m.profiles.id,
+      display_name: m.profiles.display_name,
+      avatar_url: m.profiles.avatar_url,
+      birthday_day: m.profiles.birthday_day,
+      birthday_month: m.profiles.birthday_month,
+      days: daysUntilBirthday(m.profiles.birthday_day, m.profiles.birthday_month),
+      type: 'profile'
     }))
   );
-  const upcomingBirthdays = allMembers
+
+  const manualMembers = (manualBirthdaysQuery.data || []).map(m => ({
+    id: `manual_${m.id}`,
+    display_name: m.display_name,
+    avatar_url: null,
+    birthday_day: m.birthday_day,
+    birthday_month: m.birthday_month,
+    days: daysUntilBirthday(m.birthday_day, m.birthday_month),
+    type: 'manual'
+  }));
+
+  const allBirthdays = [...allMembers, ...manualMembers]
     .filter((m) => m.days !== null)
     .sort((a, b) => a.days - b.days)
     .slice(0, 8);
@@ -249,22 +282,41 @@ export function HomePage() {
         )}
 
         {/* Upcoming birthdays */}
-        {upcomingBirthdays.length > 0 && (
+        {allBirthdays.length > 0 && (
           <div className="space-y-4">
             <div className="flex items-center justify-between px-1">
-              <h2 className="text-lg font-black tracking-tight text-text">Próximos cumpleañeros</h2>
-              <Link className="text-xs font-bold text-primary uppercase tracking-wider" to="/grupos">Ver todos</Link>
+              <h2 className="text-lg font-black tracking-tight text-text flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary scale-90" style={{ fontVariationSettings: "'FILL' 1" }}>cake</span>
+                Próximos cumpleañeros
+              </h2>
+              <Link className="text-[10px] font-black text-primary uppercase tracking-[0.15em] bg-primary/10 px-3 py-1 rounded-full border border-primary/20 hover:bg-primary hover:text-slate-900 transition-colors" to="/cumpleanios">Ver todos</Link>
             </div>
             <div className="flex gap-4 overflow-x-auto pb-6 -mx-4 px-4 no-scrollbar snap-x">
-              {upcomingBirthdays.map((member, i) => (
-                <div key={i} className="flex flex-shrink-0 flex-col items-center gap-2 snap-center">
-                  <div className="relative group active:scale-90 transition-all duration-300">
-                    <Avatar name={member.display_name} url={member.avatar_url} className="size-16 ring-4 ring-bg shadow-lg group-hover:ring-primary/30" ring />
-                    <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full bg-primary px-2.5 py-0.5 text-[10px] font-black text-slate-950 shadow-float ring-2 ring-bg">
-                      {member.days}d
-                    </span>
+              {allBirthdays.map((member, i) => (
+                <div
+                  key={i}
+                  className="flex flex-shrink-0 flex-col items-center gap-2 snap-center cursor-pointer group"
+                  onClick={() => {
+                    if (member.type === 'profile') navigate(`/perfil/${member.id}`);
+                  }}
+                >
+                  <div className="relative active:scale-90 transition-all duration-300">
+                    <div className="absolute inset-0 rounded-full bg-primary/20 scale-110 blur-md opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <Avatar
+                      name={member.display_name}
+                      url={member.avatar_url}
+                      className={cn("size-16 ring-4 ring-bg shadow-lg group-hover:ring-primary/40", member.type === 'manual' && "opacity-80 grayscale-[0.2]")}
+                      ring={true}
+                    />
+                    <div className={cn(
+                      "absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full px-2.5 py-1 text-[10px] font-black shadow-float ring-2 ring-bg flex items-center gap-0.5",
+                      member.days === 0 ? "bg-success text-slate-900" : "bg-slate-900 text-primary"
+                    )}>
+                      {member.days === 0 ? "HOY" : member.days}
+                      {member.days > 0 && <span className="text-[8px] opacity-70">D</span>}
+                    </div>
                   </div>
-                  <p className="max-w-[4.8rem] truncate text-center text-[11px] font-bold text-text-muted group-hover:text-text transition-colors">
+                  <p className="max-w-[4.8rem] truncate text-center text-[11px] font-bold text-text-muted group-hover:text-primary transition-colors">
                     {member.display_name?.split(" ")[0]}
                   </p>
                 </div>
@@ -277,15 +329,17 @@ export function HomePage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between px-1">
             <h2 className="text-lg font-black tracking-tight text-text">Planes activos</h2>
-            <Link className="text-xs font-bold text-primary uppercase tracking-wider" to="/eventos">Ver todos</Link>
+            <Link className="text-[10px] font-black text-primary uppercase tracking-widest" to="/eventos">Ver todos</Link>
           </div>
           {eventsQuery.data.length === 0 ? (
-            <div className="rounded-[2rem] bg-surface-muted/30 border border-dashed border-border p-8 text-center space-y-3">
-              <span className="material-symbols-outlined text-text-muted/20 text-5xl">auto_awesome</span>
-              <p className="text-sm text-text-muted font-medium italic">
-                \"¿Shhh... todavía no hay sorpresas en camino?\"
+            <div className="rounded-[2.5rem] bg-surface-muted/30 border border-dashed border-border p-10 text-center space-y-4 transition-all hover:bg-surface-muted/50 cursor-pointer" onClick={() => navigate("/grupos")}>
+              <div className="size-16 bg-bg rounded-2xl flex items-center justify-center mx-auto text-text-muted/40 shadow-inner">
+                <span className="material-symbols-outlined text-4xl">auto_awesome_motion</span>
+              </div>
+              <p className="text-sm text-text-muted font-medium italic max-w-[200px] mx-auto">
+                "¿Shhh... todavía no hay sorpresas en camino?"
               </p>
-              <Button variant="secondary" size="md" onClick={() => navigate("/grupos")}>Crear grupo</Button>
+              <Button variant="secondary" size="sm" className="rounded-full px-6">Empezar ahora</Button>
             </div>
           ) : (
             eventsQuery.data.slice(0, 3).map((event) => {
@@ -295,54 +349,64 @@ export function HomePage() {
               const participants = event.participants || [];
 
               return (
-                <Link key={event.id} to={`/eventos/${event.id}`} className="block transform active:scale-[0.97] transition-all">
-                  <Card className="p-5 space-y-5 hover:shadow-lg transition-shadow rounded-3xl border-none ring-1 ring-black/5 bg-white">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="flex size-12 flex-shrink-0 items-center justify-center rounded-2xl bg-primary/10">
-                          <span className="material-symbols-outlined text-[1.5rem] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>
-                            celebration
-                          </span>
-                        </div>
-                        <div className="min-w-0">
-                          <h3 className="text-lg font-black text-text truncate">Cumple de {event.birthday_profile?.display_name?.split(" ")[0] || "Alguien"}</h3>
-                          <p className="text-[10px] font-bold text-text-muted truncate uppercase tracking-wider">
-                            {event.groups?.name}
-                          </p>
-                        </div>
-                      </div>
-                      {/* <StatusBadge status={event.status} /> */}
+                <Link key={event.id} to={`/eventos/${event.id}`} className="block transform active:scale-[0.98] transition-all">
+                  <Card className="p-5 space-y-5 hover:shadow-float-sm transition-all rounded-[2rem] border-none bg-surface shadow-card relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-4">
+                      <StatusBadge status={event.status} />
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="flex items-center gap-4">
+                      <div className="flex size-14 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 text-primary group-hover:scale-110 transition-transform">
+                        <span className="material-symbols-outlined text-[1.8rem]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                          celebration
+                        </span>
+                      </div>
+                      <div className="min-w-0 pr-12">
+                        <h3 className="text-lg font-black text-text truncate leading-tight">
+                          {event.event_type === 'gathering'
+                            ? event.title || 'Convivio'
+                            : `Cumple de ${event.birthday_profile?.display_name?.split(" ")[0] || "Alguien"}`}
+                        </h3>
+                        <p className="text-[10px] font-bold text-text-muted truncate uppercase tracking-widest flex items-center gap-1.5 mt-0.5">
+                          <span className="material-symbols-outlined text-[12px]">group</span>
+                          {event.groups?.name}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
                       {priceEstimate > 0 ? (
-                        <div className="space-y-1.5">
-                          <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider">
-                            <span className="text-text-muted">Progreso</span>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-[0.1em]">
+                            <span className="text-text-muted">Presupuesto recolectado</span>
                             <span className="text-primary">{progress}%</span>
                           </div>
-                          <div className="h-2 w-full bg-surface-muted rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-primary transition-all duration-1000 ease-out"
-                              style={{ width: `${progress}%` }}
-                            />
-                          </div>
+                          <ProgressBar value={progress} className="h-2.5 shadow-inner" />
                         </div>
-                      ) : null}
+                      ) : (
+                        <div className="flex items-center justify-center p-3 rounded-2xl bg-bg/50 border border-dashed border-border">
+                          <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider italic">Sin presupuesto definido aún</p>
+                        </div>
+                      )}
 
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          {/* <AvatarStack
-                            users={participants.map((p) => ({ id: p.user_id, name: p.profiles?.display_name, avatar_url: p.profiles?.avatar_url }))}
+                      <div className="flex items-center justify-between pt-1">
+                        <div className="flex items-center gap-3">
+                          <AvatarStack
+                            users={participants.map((p) => ({
+                              name: p.profiles?.display_name,
+                              avatar_url: p.profiles?.avatar_url
+                            }))}
                             max={3}
-                          /> */}
-                          <span className="text-[10px] font-black text-text-muted uppercase">{participants.length} Cómplices</span>
-                          <StatusBadge status={event.status} />
+                          />
+                          <span className="text-[10px] font-black text-text-muted uppercase tracking-wider">{participants.length} cómplices</span>
                         </div>
                         {priceEstimate > 0 && (
-                          <p className="text-[11px] font-black text-text">
-                            {formatCurrency(priceEstimate)}
-                          </p>
+                          <div className="text-right">
+                            <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-1 leading-none">Total</p>
+                            <p className="text-sm font-black text-text">
+                              {formatCurrency(priceEstimate)}
+                            </p>
+                          </div>
                         )}
                       </div>
                     </div>

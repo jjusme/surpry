@@ -6,7 +6,10 @@ export async function listEvents(userId) {
     .from("event_participants")
     .select(
       `
+        id,
         role,
+        is_virtual,
+        display_name,
         birthday_events (
           id,
           group_id,
@@ -14,6 +17,8 @@ export async function listEvents(userId) {
           organizer_id,
           birthday_date,
           event_year,
+          event_type,
+          title,
           auto_created,
           status,
           created_at,
@@ -27,8 +32,11 @@ export async function listEvents(userId) {
             avatar_url
           ),
           participants:event_participants (
+            id,
             user_id,
             role,
+            is_virtual,
+            display_name,
             profiles (
               id,
               display_name,
@@ -56,6 +64,22 @@ export async function createEvent(groupId, birthdayUserId) {
   const { data, error } = await supabase.rpc("create_manual_birthday_event", {
     p_group_id: groupId,
     p_birthday_user_id: birthdayUserId
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
+export async function createGathering(values) {
+  const supabase = requireSupabase();
+  const { data, error } = await supabase.rpc("create_gathering_event", {
+    p_group_id: values.group_id,
+    p_title: values.title,
+    p_date: values.date,
+    p_virtual_participants: values.virtual_participants || []
   });
 
   if (error) {
@@ -106,6 +130,7 @@ export async function getEventDetail(eventId) {
         `
       )
       .eq("event_id", eventId)
+      .order("is_virtual", { ascending: true }) // Real members first
       .order("joined_at", { ascending: true }),
     supabase
       .from("gift_options")
@@ -206,9 +231,10 @@ export async function updateGiftStatus(eventId, giftId, status, actingUserId) {
   return data;
 }
 
+
 export async function createExpenseWithShares(values) {
   const supabase = requireSupabase();
-  const { data, error } = await supabase.rpc("create_expense_with_shares", {
+  const { data, error } = await supabase.rpc("create_expense_with_shares_v2", {
     p_event_id: values.event_id,
     p_title: values.title,
     p_description: values.description || null,
@@ -217,7 +243,9 @@ export async function createExpenseWithShares(values) {
     p_paid_by_user_id: values.paid_by_user_id,
     p_reimbursement_destination_id: values.reimbursement_destination_id || null,
     p_receipt_path: values.receipt_path || null,
-    p_participant_ids: values.participant_ids
+    p_participant_ids: values.participant_ids,
+    p_split_type: values.split_type || "equal",
+    p_custom_amounts: values.custom_amounts || null
   });
 
   if (error) {

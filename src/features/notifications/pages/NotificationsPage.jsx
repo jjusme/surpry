@@ -70,14 +70,14 @@ export function NotificationsPage() {
             markReadMutation.mutate(notification.id);
         }
 
-        // Navigate based on type or metadata
-        const meta = notification.metadata || {};
-        if (meta.event_id) {
-            navigate(`/eventos/${meta.event_id}`);
-        } else if (meta.group_id) {
-            navigate(`/grupos/${meta.group_id}`);
-        } else if (meta.share_id) {
-            navigate(`/shares/${meta.share_id}`);
+        const payload = notification.payload || {};
+        
+        if (payload.event_id) {
+            navigate(`/eventos/${payload.event_id}`);
+        } else if (payload.group_id) {
+            navigate(`/grupos/${payload.group_id}`);
+        } else if (payload.share_id) {
+            navigate(`/shares/${payload.share_id}`);
         }
     };
 
@@ -139,6 +139,7 @@ export function NotificationsPage() {
                             const config = (() => {
                                 switch (type) {
                                     case 'expense_created':
+                                    case 'gasto_registrado':
                                         return { icon: 'receipt_long', title: 'Nuevo gasto registrado' };
                                     case 'payment_reported':
                                     case 'comprobante_subido':
@@ -153,6 +154,10 @@ export function NotificationsPage() {
                                         return { icon: 'celebration', title: '¡Nueva sorpresa!' };
                                     case 'gift_proposed':
                                         return { icon: 'card_giftcard', title: 'Nueva idea de regalo' };
+                                    case 'cumpleanos_hoy':
+                                        return { icon: 'cake', title: '¡Feliz cumpleaños!' };
+                                    case 'recordatorio_cumpleanos':
+                                        return { icon: 'alarm', title: 'Recordatorio especial' };
                                     default:
                                         return { icon: 'notifications', title: 'Notificación' };
                                 }

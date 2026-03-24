@@ -34,7 +34,7 @@ function Chip({ value, label }) {
  * CountdownTimer — live countdown to a target date.
  * @param {string} targetDate  ISO date string or Date-compatible value
  */
-export function CountdownTimer({ targetDate }) {
+export function CountdownTimer({ targetDate, passedLabel = '¡El cumpleaños ha llegado! 🎉' }) {
     const [timeLeft, setTimeLeft] = useState(() => getTimeLeft(targetDate));
 
     useEffect(() => {
@@ -48,7 +48,7 @@ export function CountdownTimer({ targetDate }) {
     if (timeLeft.passed) {
         return (
             <p className="text-center text-sm font-bold text-success">
-                ¡El cumpleaños ha llegado! 🎉
+                {passedLabel}
             </p>
         );
     }

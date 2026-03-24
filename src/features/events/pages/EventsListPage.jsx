@@ -7,6 +7,7 @@ import { StatusBadge } from "../../../components/ui/StatusBadge";
 import { LoadingState } from "../../../components/feedback/LoadingState";
 import { ErrorState } from "../../../components/feedback/ErrorState";
 import { EmptyState } from "../../../components/feedback/EmptyState";
+import { Button } from "../../../components/ui/Button";
 import { useAuth } from "../../auth/AuthContext";
 import { listEvents } from "../service";
 import { formatDate } from "../../../utils/format";
@@ -38,7 +39,21 @@ export function EventsListPage() {
   return (
     <AppShell
       activeTab="eventos"
-      header={<PageHeader title="Eventos" subtitle="Operaciones activas" />}
+      header={
+        <PageHeader
+          title="Eventos"
+          subtitle="Operaciones activas"
+          action={
+            <Button
+              size="sm"
+              className="rounded-full px-4 h-9 font-black text-[10px] uppercase tracking-widest shadow-float"
+              onClick={() => (window.location.href = "/eventos/nuevo-convivio")}
+            >
+              Nuevo Convivio
+            </Button>
+          }
+        />
+      }
     >
       <div className="space-y-4 pt-4">
         {listQuery.data.length === 0 ? (
@@ -53,7 +68,9 @@ export function EventsListPage() {
               <Card className="p-3.5 rounded-2xl border-none shadow-sm hover:shadow-md transition-all bg-white flex items-center gap-3">
                 <div className="min-w-0 flex-1">
                   <h3 className="text-[15px] font-black text-text truncate leading-tight">
-                    Cumple de {event.birthday_profile?.display_name?.split(" ")[0] || "Alguien"}
+                    {event.event_type === 'gathering'
+                      ? event.title || 'Convivio'
+                      : `Cumple de ${event.birthday_profile?.display_name?.split(" ")[0] || "Alguien"}`}
                   </h3>
                   <div className="flex items-center gap-2 mt-0.5 text-[10px] font-bold text-text-muted/60">
                     <span className="truncate max-w-[120px]">{event.groups?.name || 'Privado'}</span>
