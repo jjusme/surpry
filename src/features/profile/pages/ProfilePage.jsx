@@ -121,7 +121,10 @@ export function ProfilePage() {
       return profile
         ? formatBirthday(profile.birthday_day, profile.birthday_month)
         : "Sin capturar";
-    if (key === "wishlist") return `${wishlistQuery.data.length} artículo(s)`;
+    if (key === "wishlist") {
+      const count = wishlistQuery.data.length;
+      return `${count} ${count === 1 ? 'artículo' : 'artículos'}`;
+    }
     if (key === "payments") return `${paymentQuery.data.length} configurado(s)`;
     return "";
   };

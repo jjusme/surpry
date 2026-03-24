@@ -78,6 +78,8 @@ export function NotificationsPage() {
             navigate(`/grupos/${payload.group_id}`);
         } else if (payload.share_id) {
             navigate(`/shares/${payload.share_id}`);
+        } else {
+            // No navigation target — silently mark as read with no action
         }
     };
 
@@ -177,12 +179,15 @@ export function NotificationsPage() {
                                 >
                                     <div className="flex gap-4">
                                         <div className={cn(
-                                            "flex size-10 flex-shrink-0 items-center justify-center rounded-2xl transition-colors",
+                                            "relative flex size-10 flex-shrink-0 items-center justify-center rounded-2xl transition-colors",
                                             isUnread ? "bg-primary/20 text-primary" : "bg-bg text-text-muted"
                                         )}>
                                             <span className="material-symbols-outlined text-[1.25rem]" style={{ fontVariationSettings: "'FILL' 1" }}>
                                                 {config.icon}
                                             </span>
+                                            {isUnread && (
+                                                <span className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full bg-primary ring-2 ring-bg" />
+                                            )}
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-start justify-between gap-2 mb-0.5">

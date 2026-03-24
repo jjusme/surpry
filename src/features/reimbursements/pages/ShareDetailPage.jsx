@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { AppShell } from "../../../components/layout/AppShell";
 import { PageHeader } from "../../../components/layout/PageHeader";
@@ -22,6 +22,7 @@ import { formatCurrency } from "../../../utils/format";
 
 export function ShareDetailPage() {
   const { shareId } = useParams();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { isSupabaseConfigured } = useAuth();
   const [note, setNote] = useState("");
@@ -94,7 +95,7 @@ export function ShareDetailPage() {
   return (
     <AppShell
       activeTab="eventos"
-      header={<PageHeader title="Detalle de pago" backTo={`/eventos/${share?.event_id || ""}`} />}
+      header={<PageHeader title="Detalle de pago" backTo={share?.event_id ? `/eventos/${share.event_id}` : "/inicio"} />}
     >
       <div className="space-y-4 pt-4">
         <div className="flex items-center justify-between gap-3">
@@ -106,9 +107,24 @@ export function ShareDetailPage() {
         </div>
 
         <Card className="space-y-3">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-text-muted">Enviar pago a</p>
+          <div className="flex items-center gap-3">
+            <div className="flex size-11 flex-shrink-0 items-center justify-center rounded-2xl bg-primary/10">
+              <span
+                className="material-symbols-outlined text-primary text-[1.25rem]"
+                style={{ fontVariationSettings: "'FILL' 1" }}
+              >
+                {share?.destination_type === 'card' ? 'credit_card' :
+                 share?.destination_type === 'clabe' ? 'account_balance' :
+                 share?.destination_type === 'alias' ? 'tag' :
+                 'payments'}
+              </span>
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">Enviar pago a</p>
+              <p className="text-sm font-bold text-text">{share?.destination_account_holder || 'Sin titular'}</p>
+            </div>
+          </div>
           <div className="space-y-2">
-            <p className="text-sm text-text-muted">Nombre: <span className="text-text font-medium">{share?.destination_account_holder || "Sin titular"}</span></p>
             <p className="text-sm text-text-muted">Banco: <span className="text-text font-medium">{share?.destination_bank_name || "Sin banco"}</span></p>
             <p className="text-sm text-text-muted">Método: <span className="text-text font-medium uppercase">{share?.destination_type || "Sin método"}</span></p>
             <div className="flex items-center justify-between gap-4 p-3 rounded-2xl bg-surface-muted/30 border border-primary/10">
@@ -157,13 +173,13 @@ export function ShareDetailPage() {
             </div>
           </Card>
         ) : (
-          <Card className="bg-green-500/10 border-green-500/20 p-8 text-center space-y-4 animate-in zoom-in duration-500">
-            <div className="size-16 bg-green-500 text-white rounded-full flex items-center justify-center mx-auto shadow-lg shadow-green-500/20">
+          <Card className="bg-success/10 border-success/20 p-8 text-center space-y-4 animate-in zoom-in duration-500">
+            <div className="size-16 bg-success text-white rounded-full flex items-center justify-center mx-auto shadow-lg shadow-success/20">
               <span className="material-symbols-outlined text-3xl">check</span>
             </div>
             <div>
-              <h2 className="text-xl font-black text-green-600">¡Pago Confirmado!</h2>
-              <p className="text-sm text-green-700/70 font-medium">Gracias por tu aporte a la sorpresa.</p>
+              <h2 className="text-xl font-black text-success">¡Pago Confirmado!</h2>
+              <p className="text-sm text-success/70 font-medium">Gracias por tu aporte a la sorpresa.</p>
             </div>
           </Card>
         )}

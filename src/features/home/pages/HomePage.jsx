@@ -217,7 +217,9 @@ export function HomePage() {
                 notifications
               </span>
               {unreadCount > 0 && (
-                <span className="absolute right-1.5 top-1.5 size-2.5 rounded-full bg-primary" />
+                <span className="absolute right-1.5 top-1.5 size-2.5 rounded-full bg-primary">
+                  <span className="absolute inset-0 rounded-full bg-primary animate-ping opacity-75" />
+                </span>
               )}
             </button>
           }
@@ -241,6 +243,9 @@ export function HomePage() {
                 <h3 className="text-lg font-black text-white leading-none">
                   {formatCurrency(sharesQuery.data.reduce((acc, s) => acc + Number(s.amount_due || 0), 0))}
                 </h3>
+                {sharesQuery.data.length > 1 && (
+                  <p className="text-[10px] font-bold text-primary/50 mt-0.5">{sharesQuery.data.length} gastos pendientes</p>
+                )}
               </div>
               <Button
                 size="md"

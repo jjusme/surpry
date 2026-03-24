@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-hot-toast";
 import { AppShell } from "../../../components/layout/AppShell";
@@ -19,6 +19,7 @@ import { cn } from "../../../utils/cn";
 
 export function GroupDetailPage() {
   const { groupId } = useParams();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, isSupabaseConfigured } = useAuth();
   const [selectedBirthdayUser, setSelectedBirthdayUser] = useState("");
@@ -58,7 +59,7 @@ export function GroupDetailPage() {
     mutationFn: () => deleteGroup(groupId),
     onSuccess: () => {
       toast.success("Grupo eliminado");
-      window.location.href = "/grupos";
+      navigate("/grupos", { replace: true });
     },
     onError: (error) => toast.error(error.message)
   });
@@ -164,9 +165,7 @@ export function GroupDetailPage() {
                 TOP SECRET
               </span>
             </div>
-          </div>
-
-          {membersWithBirthday.filter((m) => m.user_id !== user?.id).length > 0 && (
+          </div>          {membersWithBirthday.filter((m) => m.user_id !== user?.id).length > 0 ? (
             <Card className="space-y-5 border-l-4 border-primary p-5 shadow-sm">
               <div>
                 <p className="text-base font-bold text-text">Inicia un plan sorpresa</p>
@@ -185,7 +184,7 @@ export function GroupDetailPage() {
                     .filter((m) => m.user_id !== user?.id)
                     .map((m) => (
                       <option key={m.user_id} value={m.user_id}>
-                        {m.profiles?.display_name} ·{" "}
+                        {m.profiles?.display_name} {"· "}
                         {formatBirthday(m.profiles?.birthday_day, m.profiles?.birthday_month)}
                       </option>
                     ))}
@@ -200,7 +199,14 @@ export function GroupDetailPage() {
                 </Button>
               </div>
             </Card>
-          )}
+          ) : (
+            <div className="flex items-center gap-3 rounded-2xl border border-dashed border-border bg-surface/30 px-4 py-4">
+              <span className="material-symbols-outlined text-text-muted/40 text-[1.4rem]">group_add</span>
+              <p className="text-sm text-text-muted leading-relaxed">
+                Invita más cómplices para poder planear sorpresas de cumpleaños.
+              </p>
+            </div>
+          )}        
 
           <div className="space-y-3">
             {events.length === 0 ? (
@@ -223,9 +229,13 @@ export function GroupDetailPage() {
                       </span>
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs font-bold uppercase tracking-wide text-text-muted mb-0.5">Festejado</p>
+                      <p className="text-xs font-bold uppercase tracking-wide text-text-muted mb-0.5">
+                        {event.event_type === 'gathering' ? 'Convivio' : 'Festejado'}
+                      </p>
                       <p className="text-lg font-black text-text truncate capitalize">
-                        {event.birthday_profile?.display_name || "Desconocido"}
+                        {event.event_type === 'gathering'
+                          ? (event.title || 'Convivio')
+                          : (event.birthday_profile?.display_name || 'Un cumpleañero')}
                       </p>
                       <div className="flex items-center gap-2 mt-1">
                         <span className="material-symbols-outlined text-[1rem] text-primary">calendar_today</span>

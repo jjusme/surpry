@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-hot-toast";
@@ -121,6 +121,10 @@ export function GroupsListPage() {
                           {members.length} cómplice{members.length !== 1 ? "s" : ""}
                         </p>
                       </div>
+                      <AvatarStack
+                        users={members.map(m => ({ name: m.profiles?.display_name, avatar_url: m.profiles?.avatar_url }))}
+                        max={4}
+                      />
                     </div>
 
                     {nextBirthday && (

@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -130,13 +130,13 @@ export function PaymentMethodsPage() {
   return (
     <AppShell
       activeTab="perfil"
-      header={<PageHeader title="Metodos de reembolso" backTo="/perfil" />}
+      header={<PageHeader title="Métodos de reembolso" backTo="/perfil" />}
     >
       <div className="space-y-4 pt-4">
         <Card className="space-y-4">
           <div>
             <h2 className="text-lg font-bold text-text">
-              {editing ? "Editar metodo" : "Agregar metodo"}
+              {editing ? "Editar método" : "Agregar método"}
             </h2>
             <p className="text-sm text-text-muted">
               Solo se mostrará a personas que deban reembolsarte dinero de un gasto compartido.
@@ -170,8 +170,14 @@ export function PaymentMethodsPage() {
               <TextArea rows={2} placeholder="Instrucciones opcionales" {...register("note")} />
             </FormField>
             <label className="flex items-center gap-3 rounded-2xl bg-surface-muted px-4 py-3 text-sm font-medium text-text">
-              <input type="checkbox" className="size-4" onChange={(event) => setValue("is_default", event.target.checked)} />
-              Usar como metodo por defecto
+              <input
+                type="checkbox"
+                className="size-4"
+                defaultChecked={editing ? Boolean(editing.is_default) : true}
+                key={editing?.id || 'new'}
+                onChange={(event) => setValue("is_default", event.target.checked)}
+              />
+              Usar como método por defecto
             </label>
             <Button type="submit" className="w-full" size="lg" disabled={isSubmitting || saveMutation.isPending}>
               {saveMutation.isPending ? "Guardando..." : editing ? "Actualizar metodo" : "Guardar metodo"}
@@ -193,15 +199,29 @@ export function PaymentMethodsPage() {
           </div>
 
           {listQuery.data.length === 0 ? (
-            <p className="text-sm text-text-muted">Aún no agregas ningún método.</p>
+            <div className="py-8 text-center space-y-4">
+              <div className="size-16 bg-primary/10 rounded-[1.5rem] flex items-center justify-center mx-auto">
+                <span className="material-symbols-outlined text-primary text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>account_balance_wallet</span>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-bold text-text">Sin métodos aún</p>
+                <p className="text-xs text-text-muted leading-relaxed max-w-[200px] mx-auto">
+                  Agrega una CLABE, tarjeta o alias para que tus grupos te puedan reembolsar.
+                </p>
+              </div>
+            </div>
           ) : (
             listQuery.data.map((item) => (
               <div key={item.id} className="space-y-3 rounded-2xl bg-surface-muted px-4 py-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-sm font-semibold text-text">{item.label || item.type.toUpperCase()}</p>
-                    <p className="text-sm text-text-muted">{item.bank_name || "Sin banco"}</p>
-                    <p className="text-sm text-text-muted">{item.destination_value}</p>
+                    <p className="text-sm font-bold text-text">{item.label || item.type.toUpperCase()}</p>
+                    <p className="text-xs text-text-muted">{item.bank_name || "Sin banco"}</p>
+                    <p className="text-xs font-mono text-text-muted">
+                      {item.destination_value?.length > 8
+                        ? `•••• ${item.destination_value.slice(-4)}`
+                        : item.destination_value}
+                    </p>
                   </div>
                   {item.is_default ? <span className="rounded-full bg-primary/15 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-primary-strong">Default</span> : null}
                 </div>

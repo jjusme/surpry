@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "../../../components/layout/AppShell";
 import { PageHeader } from "../../../components/layout/PageHeader";
@@ -13,6 +13,7 @@ import { listEvents } from "../service";
 import { formatDate } from "../../../utils/format";
 
 export function EventsListPage() {
+  const navigate = useNavigate();
   const { user, isSupabaseConfigured } = useAuth();
   const listQuery = useQuery({
     queryKey: ["events", user?.id],
@@ -47,7 +48,7 @@ export function EventsListPage() {
             <Button
               size="sm"
               className="rounded-full px-4 h-9 font-black text-[10px] uppercase tracking-widest shadow-float"
-              onClick={() => (window.location.href = "/eventos/nuevo-convivio")}
+              onClick={() => navigate("/eventos/nuevo-convivio")}
             >
               Nuevo Convivio
             </Button>
@@ -66,6 +67,14 @@ export function EventsListPage() {
           listQuery.data.map((event) => (
             <Link key={event.id} to={`/eventos/${event.id}`} className="block transform active:scale-[0.99] transition-all">
               <Card className="p-3.5 rounded-2xl border-none shadow-sm hover:shadow-md transition-all bg-white flex items-center gap-3">
+                <div className="flex size-10 flex-shrink-0 items-center justify-center rounded-2xl bg-primary/10">
+                  <span
+                    className="material-symbols-outlined text-[1.25rem] text-primary"
+                    style={{ fontVariationSettings: "'FILL' 1" }}
+                  >
+                    {event.event_type === 'gathering' ? 'groups' : 'cake'}
+                  </span>
+                </div>
                 <div className="min-w-0 flex-1">
                   <h3 className="text-[15px] font-black text-text truncate leading-tight">
                     {event.event_type === 'gathering'
@@ -76,6 +85,14 @@ export function EventsListPage() {
                     <span className="truncate max-w-[120px]">{event.groups?.name || 'Privado'}</span>
                     <span className="opacity-40">•</span>
                     <span>{event.participants?.length || 0} {event.participants?.length === 1 ? 'Cómplice' : 'Cómplices'}</span>
+                    {event.birthday_date && (
+                      <>
+                        <span className="opacity-40">•</span>
+                        <span className="text-primary font-black">
+                          {new Date(event.birthday_date).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}
+                        </span>
+                      </>
+                    )}
                   </div>
                 </div>
 

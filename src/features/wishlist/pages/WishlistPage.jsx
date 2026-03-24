@@ -14,6 +14,7 @@ import { Select } from "../../../components/ui/Select";
 import { TextArea } from "../../../components/ui/TextArea";
 import { LoadingState } from "../../../components/feedback/LoadingState";
 import { ErrorState } from "../../../components/feedback/ErrorState";
+import { EmptyState } from "../../../components/feedback/EmptyState";
 import { ConfirmDialog } from "../../../components/ui/ConfirmDialog";
 import { useAuth } from "../../auth/AuthContext";
 import { deleteWishlistItem, listMyWishlist, saveWishlistItem } from "../service";
@@ -170,39 +171,45 @@ export function WishlistPage() {
 
         <div className="space-y-3">
           {listQuery.data.length === 0 ? (
-            <Card>
-              <p className="text-sm text-text-muted">Aun no agregas regalos a tu wishlist.</p>
-            </Card>
+            <div className="py-12 text-center space-y-4">
+              <div className="size-20 bg-primary/10 rounded-[1.75rem] flex items-center justify-center mx-auto">
+                <span className="material-symbols-outlined text-primary text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>card_giftcard</span>
+              </div>
+              <div className="space-y-1">
+                <p className="text-base font-bold text-text">Tu wishlist está vacía</p>
+                <p className="text-sm text-text-muted leading-relaxed max-w-[200px] mx-auto">
+                  Agrega ideas de regalo para que tus grupos sepan qué regalarte.
+                </p>
+              </div>
+            </div>
           ) : (
             listQuery.data.map((item) => (
-              <Card key={item.id} className="space-y-3">
+              <Card key={item.id} className="space-y-3 hover:border-primary/20 transition-all">
                 <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-lg font-bold text-text">{item.title}</p>
-                    <p className="text-sm text-text-muted">Prioridad {(item.priority || "media").toUpperCase()}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[15px] font-bold text-text leading-tight">{item.title}</p>
                     {item.price_estimate ? (
-                      <p className="text-sm font-semibold text-primary-strong">
-                        {formatCurrency(item.price_estimate)}
-                      </p>
+                      <p className="text-sm font-black text-primary mt-0.5">{formatCurrency(item.price_estimate)}</p>
                     ) : null}
                   </div>
-                  <span className="rounded-full bg-primary/12 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-primary-strong">
-                    {item.priority || "media"}
+                  <span className={`flex-shrink-0 rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.15em] ${
+                    item.priority === 'alta' ? 'bg-danger/10 text-danger border border-danger/20' :
+                    item.priority === 'baja' ? 'bg-success/10 text-success border border-success/20' :
+                    'bg-warning/10 text-warning border border-warning/20'
+                  }`}>
+                    {item.priority || 'media'}
                   </span>
                 </div>
-                {item.notes ? <p className="text-sm text-text-muted">{item.notes}</p> : null}
+                {item.notes ? <p className="text-sm text-text-muted italic leading-relaxed">"{item.notes}"</p> : null}
                 {item.url ? (
-                  <a className="text-sm font-semibold text-primary-strong" href={item.url} target="_blank" rel="noreferrer">
-                    Abrir link
+                  <a className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/10 text-primary text-[11px] font-black uppercase tracking-wider hover:bg-primary hover:text-slate-950 transition-all active:scale-95" href={item.url} target="_blank" rel="noreferrer">
+                    <span className="material-symbols-outlined text-[1rem]">link</span>
+                    Ver producto
                   </a>
                 ) : null}
                 <div className="flex gap-2">
-                  <Button variant="secondary" className="flex-1" onClick={() => setEditing(item)}>
-                    Editar
-                  </Button>
-                  <Button variant="danger" className="flex-1" onClick={() => setDeletingId(item.id)}>
-                    Eliminar
-                  </Button>
+                  <Button variant="secondary" className="flex-1" onClick={() => setEditing(item)}>Editar</Button>
+                  <Button variant="danger" className="flex-1" onClick={() => setDeletingId(item.id)}>Eliminar</Button>
                 </div>
               </Card>
             ))

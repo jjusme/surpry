@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "../../../components/layout/AppShell";
@@ -157,11 +157,12 @@ export function EventDetailPage() {
     onError: (error) => toast.error(error.message)
   });
 
+  const navigate = useNavigate();
   const deleteMutation = useMutation({
     mutationFn: () => deleteEvent(eventId),
     onSuccess: () => {
       toast.success("Evento eliminado");
-      window.location.href = "/eventos";
+      navigate("/eventos", { replace: true });
     },
     onError: (error) => toast.error(error.message)
   });
@@ -316,7 +317,7 @@ export function EventDetailPage() {
                 calendar_today
               </span>
               <span className="text-xs font-bold text-text">
-                {event?.event_type === 'gathering' ? 'Día: ' : 'Festa: '}
+                {event?.event_type === 'gathering' ? 'Convivio · ' : 'Fecha: '}
                 {formatDate(event?.birthday_date, { day: "numeric", month: "long" }).toUpperCase()}
               </span>
             </div>
@@ -365,9 +366,7 @@ export function EventDetailPage() {
                   <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted mb-1">
                     {event?.event_type === 'gathering' ? 'Estado del convivio' : 'Estado del plan'}
                   </p>
-                  <StatusBadge status={event?.status}>
-                    {event?.status === 'active' ? 'EN MARCHA' : event?.status.toUpperCase()}
-                  </StatusBadge>
+                  <StatusBadge status={event?.status} />
                 </div>
                 <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10">
                   <span
@@ -626,22 +625,32 @@ export function EventDetailPage() {
                   </FormField>
                 </div>
                 <FormField label="¿Dónde quieres que te reembolsen?">
-                  <Select
-                    value={expenseForm.reimbursement_destination_id}
-                    onChange={(e) =>
-                      setExpenseForm((c) => ({
-                        ...c,
-                        reimbursement_destination_id: e.target.value
-                      }))
-                    }
-                  >
-                    <option value="">Selecciona tu método de pago</option>
-                    {paymentQuery.data.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.label || item.type}
-                      </option>
-                    ))}
-                  </Select>
+                  {paymentQuery.data.length === 0 ? (
+                    <div className="flex items-center gap-3 rounded-2xl border border-warning/30 bg-warning/10 px-4 py-3">
+                      <span className="material-symbols-outlined text-warning text-[1.25rem]" style={{ fontVariationSettings: "'FILL' 1" }}>info</span>
+                      <p className="text-xs font-bold text-warning flex-1">
+                        Sin métodos configurados.{" "}
+                        <a href="/perfil/metodos" className="underline hover:text-warning-strong">Agregar uno</a>
+                      </p>
+                    </div>
+                  ) : (
+                    <Select
+                      value={expenseForm.reimbursement_destination_id}
+                      onChange={(e) =>
+                        setExpenseForm((c) => ({
+                          ...c,
+                          reimbursement_destination_id: e.target.value
+                        }))
+                      }
+                    >
+                      <option value="">Selecciona tu método de pago</option>
+                      {paymentQuery.data.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.label || item.type}
+                        </option>
+                      ))}
+                    </Select>
+                  )}
                 </FormField>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between px-1">
@@ -709,13 +718,20 @@ export function EventDetailPage() {
                     ))}
                   </div>
                 </div>
-                <FormField label="Foto del ticket (opcional)">
+                <div className="space-y-1">
+                  <p className="text-xs font-black uppercase tracking-widest text-text-muted ml-1">Foto del ticket (opcional)</p>
                   <Input
                     type="file"
                     className="p-2 h-auto text-xs"
                     onChange={(e) => setReceiptFile(e.target.files?.[0] || null)}
                   />
-                </FormField>
+                  {receiptFile && (
+                    <p className="text-[11px] font-bold text-primary/70 pl-1 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[1rem]" style={{ fontVariationSettings: "'FILL' 1" }}>attach_file</span>
+                      {receiptFile.name}
+                    </p>
+                  )}
+                </div>
                 <Button
                   type="submit"
                   size="pill"
@@ -730,6 +746,22 @@ export function EventDetailPage() {
             </Card>
 
             <div className="space-y-3">
+              {splitType === "manual" && selectedParticipants.length > 0 && expenseForm.amount && (() => {
+                const manualTotal = selectedParticipants.reduce((acc, pid) => acc + Number(customAmounts[pid] || 0), 0);
+                const diff = Number(expenseForm.amount) - manualTotal;
+                const balanced = Math.abs(diff) < 0.01;
+                return (
+                  <div className={`flex items-center justify-between px-4 py-2.5 rounded-2xl border ${balanced ? 'bg-success/10 border-success/20' : 'bg-warning/10 border-warning/30'}`}>
+                    <span className={`text-xs font-black uppercase tracking-widest ${balanced ? 'text-success' : 'text-warning'}`}>
+                      {balanced ? '✓ Cuadrado' : 'Falta distribuir'}
+                    </span>
+                    <span className={`text-sm font-black ${balanced ? 'text-success' : 'text-warning'}`}>
+                      {balanced ? formatCurrency(Number(expenseForm.amount)) : `${formatCurrency(manualTotal)} / ${formatCurrency(Number(expenseForm.amount))}`}
+                    </span>
+                  </div>
+                );
+              })()}
+
               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted px-1">Historial de gastos</p>
               {expenses.length === 0 ? (
                 <div className="rounded-[2rem] bg-surface/30 border border-dashed border-border p-8 text-center space-y-2">
@@ -743,7 +775,7 @@ export function EventDetailPage() {
                       <div className="space-y-0.5">
                         <p className="font-bold text-text tracking-tight">{expense.title}</p>
                         <p className="text-[10px] font-black uppercase tracking-widest text-text-muted opacity-60">
-                          {expense.category}
+                          {EXPENSE_CATEGORIES.find(c => c.value === expense.category)?.label ?? expense.category}
                         </p>
                       </div>
                       <p className="text-lg font-black text-primary">

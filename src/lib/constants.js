@@ -22,7 +22,7 @@ export const SHARE_STATUS = {
 export const EXPENSE_CATEGORIES = [
   { value: "gift", label: "Regalo" },
   { value: "cake", label: "Pastel" },
-  { value: "decoration", label: "Decoracion" },
+  { value: "decoration", label: "Decoración" },
   { value: "snacks", label: "Snacks" },
   { value: "other", label: "Otro" }
 ];
