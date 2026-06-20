@@ -28,12 +28,23 @@ import {
   updateGiftStatus,
   syncEventWishlist,
   uploadPrivateFile,
-  deleteEvent
+  deleteEvent,
+  voteGift,
+  unvoteGift,
+  getGiftVotes,
+  listEventTasks,
+  createEventTask,
+  toggleEventTask,
+  deleteEventTask,
+  completeEvent,
+  updateRsvp
 } from "../service";
-import { listPaymentDestinations } from "../../profile/service";
+import { listPaymentDestinations, getProfileById } from "../../profile/service";
 import { EVENT_TABS, EXPENSE_CATEGORIES } from "../../../lib/constants";
 import { formatCurrency, formatDate } from "../../../utils/format";
 import { cn } from "../../../utils/cn";
+import { suggestGifts as suggestGiftsApi } from "../../ai/service";
+import { AiSuggestionCard } from "../../../components/ui/AiSuggestionCard";
 
 const initialGiftForm = { title: "", url: "", price_estimate: "", notes: "" };
 const initialExpenseForm = {
@@ -176,6 +187,111 @@ export function EventDetailPage() {
         toast.error("No hay ideas nuevas en la wishlist para importar");
       }
       queryClient.invalidateQueries({ queryKey: ["event-detail", eventId] });
+    },
+    onError: (error) => toast.error(error.message)
+  });
+
+  // --- Gift Voting ---
+  const [giftVotes, setGiftVotes] = useState({});
+  const [newTaskTitle, setNewTaskTitle] = useState("");
+
+  useEffect(() => {
+    if (!gifts.length) return;
+    gifts.forEach(async (gift) => {
+      try {
+        const votes = await getGiftVotes(gift.id);
+        setGiftVotes((prev) => ({ ...prev, [gift.id]: votes }));
+      } catch {}
+    });
+  }, [gifts]);
+
+  const voteMutation = useMutation({
+    mutationFn: ({ giftId, hasVoted }) => hasVoted ? unvoteGift(giftId) : voteGift(giftId),
+    onSuccess: async () => {
+      queryClient.invalidateQueries({ queryKey: ["event-detail", eventId] });
+      gifts.forEach(async (gift) => {
+        try {
+          const votes = await getGiftVotes(gift.id);
+          setGiftVotes((prev) => ({ ...prev, [gift.id]: votes }));
+        } catch {}
+      });
+    },
+    onError: (error) => toast.error(error.message)
+  });
+
+  // --- Event Tasks ---
+  const tasksQuery = useQuery({
+    queryKey: ["event-tasks", eventId],
+    queryFn: () => listEventTasks(eventId),
+    enabled: Boolean(eventId && isSupabaseConfigured && activeTab === "tareas")
+  });
+
+  const createTaskMutation = useMutation({
+    mutationFn: (title) => createEventTask(eventId, title, null, user.id),
+    onSuccess: async () => {
+      setNewTaskTitle("");
+      toast.success("Tarea creada");
+      await queryClient.invalidateQueries({ queryKey: ["event-tasks", eventId] });
+    },
+    onError: (error) => toast.error(error.message)
+  });
+
+  const toggleTaskMutation = useMutation({
+    mutationFn: ({ taskId, isCompleted }) => toggleEventTask(taskId, isCompleted),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["event-tasks", eventId] });
+    }
+  });
+
+  const deleteTaskMutation = useMutation({
+    mutationFn: deleteEventTask,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["event-tasks", eventId] });
+    }
+  });
+
+  // --- Complete Event ---
+  const completeEventMutation = useMutation({
+    mutationFn: () => completeEvent(eventId),
+    onSuccess: async () => {
+      toast.success("Evento completado");
+      await queryClient.invalidateQueries({ queryKey: ["event-detail", eventId] });
+    },
+    onError: (error) => toast.error(error.message)
+  });
+
+  // --- RSVP ---
+  const rsvpMutation = useMutation({
+    mutationFn: (status) => updateRsvp(eventId, status),
+    onSuccess: async () => {
+      toast.success("Respuesta registrada");
+      await queryClient.invalidateQueries({ queryKey: ["event-detail", eventId] });
+    }
+  });
+
+  // --- Birthday Brief ---
+  const [birthdayProfile, setBirthdayProfile] = useState(null);
+  useEffect(() => {
+    if (event?.birthday_user_id && event.event_type !== 'gathering') {
+      getProfileById(event.birthday_user_id).then(setBirthdayProfile).catch(() => {});
+    }
+  }, [event?.birthday_user_id, event?.event_type]);
+
+  // --- AI Gift Suggestions ---
+  const [aiSuggestions, setAiSuggestions] = useState([]);
+  const [showAiSuggestions, setShowAiSuggestions] = useState(false);
+  const suggestGiftsMutation = useMutation({
+    mutationFn: () => suggestGiftsApi({
+      birthdayName: event?.birthday_profile?.display_name || "",
+      wishlist: gifts.filter((g) => g.source_type === "wishlist").map((g) => ({ title: g.title, price_estimate: g.price_estimate })),
+      budget: null,
+      interests: birthdayProfile?.hobbies || [],
+      dislikes: birthdayProfile?.dislikes || [],
+      lastGift: null
+    }),
+    onSuccess: (data) => {
+      setAiSuggestions(data.suggestions || []);
+      setShowAiSuggestions(true);
     },
     onError: (error) => toast.error(error.message)
   });
@@ -385,7 +501,33 @@ export function EventDetailPage() {
                   value={fundingPct}
                 />
               )}
+
+              {event?.status === 'active' && event?.organizer_id === user?.id && (
+                <Button variant="primary" size="lg" className="w-full" onClick={() => completeEventMutation.mutate()} disabled={completeEventMutation.isPending}>
+                  {completeEventMutation.isPending ? "Completando..." : "Marcar como completado"}
+                </Button>
+              )}
             </Card>
+
+            {/* Birthday Brief */}
+            {event?.event_type !== 'gathering' && birthdayProfile && (
+              <Card className="space-y-3 p-4">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[1rem] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>info</span>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">Ficha del cumpleañero</p>
+                </div>
+                <div className="space-y-2 text-sm">
+                  {birthdayProfile.shirt_size && <p className="text-text"><span className="font-bold text-text-muted">Camisa:</span> {birthdayProfile.shirt_size}</p>}
+                  {birthdayProfile.shoe_size && <p className="text-text"><span className="font-bold text-text-muted">Zapato:</span> {birthdayProfile.shoe_size}</p>}
+                  {birthdayProfile.pants_size && <p className="text-text"><span className="font-bold text-text-muted">Pantalón:</span> {birthdayProfile.pants_size}</p>}
+                  {birthdayProfile.favorite_colors?.length > 0 && <p className="text-text"><span className="font-bold text-text-muted">Colores:</span> {birthdayProfile.favorite_colors.join(", ")}</p>}
+                  {birthdayProfile.favorite_brands?.length > 0 && <p className="text-text"><span className="font-bold text-text-muted">Marcas:</span> {birthdayProfile.favorite_brands.join(", ")}</p>}
+                  {birthdayProfile.hobbies?.length > 0 && <p className="text-text"><span className="font-bold text-text-muted">Intereses:</span> {birthdayProfile.hobbies.join(", ")}</p>}
+                  {birthdayProfile.dietary_restrictions?.length > 0 && <p className="text-success"><span className="font-bold">Dieta:</span> {birthdayProfile.dietary_restrictions.join(", ")}</p>}
+                  {birthdayProfile.dislikes?.length > 0 && <p className="text-danger"><span className="font-bold">No quiere:</span> {birthdayProfile.dislikes.join(", ")}</p>}
+                </div>
+              </Card>
+            )}
 
             <div className="space-y-3">
               <div className="flex items-center justify-between px-1">
@@ -512,6 +654,45 @@ export function EventDetailPage() {
               </form>
             </Card>
 
+            {/* AI Suggestions */}
+            {event?.event_type !== 'gathering' && birthdayProfile && (
+              <div className="space-y-3">
+                {!showAiSuggestions ? (
+                  <Button
+                    variant="secondary"
+                    className="w-full gap-2"
+                    onClick={() => suggestGiftsMutation.mutate()}
+                    disabled={suggestGiftsMutation.isPending}
+                  >
+                    <span className="material-symbols-outlined text-[1.1rem]" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
+                    {suggestGiftsMutation.isPending ? "Pensando ideas..." : "Sugerir ideas con IA"}
+                  </Button>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between px-1">
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Sugerencias IA</p>
+                      <button type="button" onClick={() => { setShowAiSuggestions(false); setAiSuggestions([]); }} className="text-xs font-bold text-text-muted hover:text-text">
+                        Cerrar
+                      </button>
+                    </div>
+                    {aiSuggestions.map((s, i) => (
+                      <AiSuggestionCard
+                        key={i}
+                        title={s.title}
+                        reason={s.reason}
+                        estimated_price={s.estimated_price}
+                        store={s.store}
+                        onSelect={(data) => {
+                          setGiftForm((c) => ({ ...c, title: data.title, price_estimate: data.estimated_price?.toString() || "", notes: data.reason }));
+                          setShowAiSuggestions(false);
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="space-y-3">
               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted px-1">Opciones actuales</p>
               {gifts.length === 0 ? (
@@ -570,6 +751,41 @@ export function EventDetailPage() {
                         )}
                       </div>
                       <StatusBadge status={gift.status}>{gift.status === 'proposed' ? 'IDEA' : 'REGALO'}</StatusBadge>
+                    </div>
+
+                    {/* Voting */}
+                    <div className="flex items-center gap-3 pt-2 border-t border-border/50">
+                      {(() => {
+                        const votes = giftVotes[gift.id] || [];
+                        const hasVoted = votes.some((v) => v.user_id === user?.id);
+                        return (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => voteMutation.mutate({ giftId: gift.id, hasVoted })}
+                              disabled={voteMutation.isPending}
+                              className={cn(
+                                "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all border",
+                                hasVoted
+                                  ? "bg-primary/15 text-primary-strong border-primary/30"
+                                  : "bg-surface text-text-muted border-border hover:border-primary/40"
+                              )}
+                            >
+                              <span className="material-symbols-outlined text-[1rem]" style={hasVoted ? { fontVariationSettings: "'FILL' 1" } : {}}>
+                                thumb_up
+                              </span>
+                              {votes.length}
+                            </button>
+                            {votes.length > 0 && (
+                              <div className="flex -space-x-2">
+                                {votes.slice(0, 5).map((v) => (
+                                  <Avatar key={v.user_id} name={v.display_name} url={v.avatar_url} className="size-6 border-2 border-surface text-[8px]" />
+                                ))}
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
                   </Card>
                 ))
@@ -895,28 +1111,103 @@ export function EventDetailPage() {
                         </p>
                       </div>
                       <div className="flex gap-2">
-                        <Button
-                          variant="primary"
-                          className="flex-1 h-10 text-xs font-black uppercase rounded-xl"
-                          onClick={() =>
-                            reviewMutation.mutate({ shareId: share.id, action: "confirmed" })
-                          }
-                        >
+                        <Button variant="primary" className="flex-1 h-10 text-xs font-black uppercase rounded-xl"
+                          onClick={() => reviewMutation.mutate({ shareId: share.id, action: "confirmed" })}>
                           Lo recibí
                         </Button>
-                        <Button
-                          variant="secondary"
-                          className="flex-none w-20 h-10 text-xs font-black uppercase rounded-xl border-danger/20 text-danger"
-                          onClick={() =>
-                            reviewMutation.mutate({ shareId: share.id, action: "rejected" })
-                          }
-                        >
+                        <Button variant="secondary" className="flex-none w-20 h-10 text-xs font-black uppercase rounded-xl border-danger/20 text-danger"
+                          onClick={() => reviewMutation.mutate({ shareId: share.id, action: "rejected" })}>
                           No
                         </Button>
                       </div>
                     </div>
                   ))}
                 </div>
+              )}
+            </Card>
+          </div>
+        )}
+
+        {/* TAREAS */}
+        {activeTab === "tareas" && (
+          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-400">
+            <Card className="space-y-4 p-5 shadow-sm">
+              <h3 className="text-lg font-black text-text tracking-tight">Checklist de tareas</h3>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Ej. Comprar pastel..."
+                  value={newTaskTitle}
+                  onChange={(e) => setNewTaskTitle(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && newTaskTitle.trim()) {
+                      createTaskMutation.mutate(newTaskTitle.trim());
+                    }
+                  }}
+                  className="flex-1"
+                />
+                <Button
+                  size="icon"
+                  onClick={() => { if (newTaskTitle.trim()) createTaskMutation.mutate(newTaskTitle.trim()); }}
+                  disabled={!newTaskTitle.trim() || createTaskMutation.isPending}
+                >
+                  <span className="material-symbols-outlined text-[1.25rem]">add</span>
+                </Button>
+              </div>
+
+              {tasksQuery?.isLoading ? (
+                <LoadingState message="Cargando tareas..." />
+              ) : tasksQuery?.data?.length === 0 ? (
+                <div className="py-6 text-center">
+                  <span className="material-symbols-outlined text-text-muted/20 text-4xl">checklist</span>
+                  <p className="text-sm font-medium text-text-muted italic mt-2">Agrega tareas para coordinar la sorpresa.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {tasksQuery?.data?.map((task) => (
+                    <div
+                      key={task.id}
+                      className={cn(
+                        "flex items-center gap-3 rounded-2xl border px-4 py-3 transition-all",
+                        task.is_completed
+                          ? "bg-success/5 border-success/20 opacity-60"
+                          : "bg-surface/50 border-border/40 hover:border-primary/30"
+                      )}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => toggleTaskMutation.mutate({ taskId: task.id, isCompleted: !task.is_completed })}
+                        className="flex-shrink-0"
+                      >
+                        <span
+                          className={cn(
+                            "material-symbols-outlined text-[1.25rem] transition-colors",
+                            task.is_completed ? "text-success" : "text-text-muted/40 hover:text-primary"
+                          )}
+                          style={task.is_completed ? { fontVariationSettings: "'FILL' 1" } : {}}
+                        >
+                          {task.is_completed ? "check_circle" : "radio_button_unchecked"}
+                        </span>
+                      </button>
+                      <span className={cn("flex-1 text-sm font-semibold", task.is_completed && "line-through text-text-muted")}>
+                        {task.title}
+                      </span>
+                      {task.profiles?.display_name && (
+                        <span className="text-[10px] font-bold text-text-muted/60 uppercase">{task.profiles.display_name.split(" ")[0]}</span>
+                      )}
+                      <button type="button" onClick={() => deleteTaskMutation.mutate(task.id)} className="text-text-muted/30 hover:text-danger transition-colors">
+                        <span className="material-symbols-outlined text-[1rem]">close</span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {tasksQuery?.data?.length > 0 && (
+                <ProgressBar
+                  label="Progreso"
+                  rightLabel={`${tasksQuery.data.filter((t) => t.is_completed).length}/${tasksQuery.data.length}`}
+                  value={Math.round((tasksQuery.data.filter((t) => t.is_completed).length / tasksQuery.data.length) * 100)}
+                />
               )}
             </Card>
           </div>

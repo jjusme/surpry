@@ -1,12 +1,29 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { LoadingState } from "../components/feedback/LoadingState";
 import { useAuth } from "../features/auth/AuthContext";
+import { isSupabaseConfigured, supabase } from "../lib/supabase";
 
 export function ProtectedRoute() {
   const location = useLocation();
-  const { session, isLoading } = useAuth();
+  const { session, isLoading: authLoading } = useAuth();
 
-  if (isLoading) {
+  const profileQuery = useQuery({
+    queryKey: ["profile-setup-check", session?.user?.id],
+    queryFn: async () => {
+      if (!session?.user?.id || !isSupabaseConfigured) return null;
+      const { data } = await supabase
+        .from("profiles")
+        .select("has_completed_setup, birthday_day, birthday_month")
+        .eq("id", session.user.id)
+        .maybeSingle();
+      return data;
+    },
+    enabled: Boolean(session?.user?.id && isSupabaseConfigured),
+    staleTime: 60000
+  });
+
+  if (authLoading) {
     return <LoadingState message="Preparando tu sesion..." fullScreen />;
   }
 
@@ -14,9 +31,14 @@ export function ProtectedRoute() {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
-  const hasCompletedSetup = localStorage.getItem("has_completed_setup") === "true";
+  const hasCompletedSetup = profileQuery.data?.has_completed_setup === true;
+  const hasBirthday = profileQuery.data?.birthday_day && profileQuery.data?.birthday_month;
 
-  if (!hasCompletedSetup && location.pathname !== "/setup") {
+  if (profileQuery.isLoading) {
+    return <LoadingState message="Cargando tu perfil..." fullScreen />;
+  }
+
+  if ((!hasCompletedSetup || !hasBirthday) && location.pathname !== "/setup") {
     return <Navigate to="/setup" replace />;
   }
 

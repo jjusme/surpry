@@ -202,7 +202,7 @@ export function GroupsListPage() {
         type="button"
         onClick={() => setShowCreate(true)}
         className="fixed bottom-24 right-4 z-40 flex size-14 items-center justify-center rounded-full bg-primary shadow-float transition-transform active:scale-95"
-        style={{ maxRight: "calc(50% - 15rem + 1rem)" }}
+        style={{ right: "calc(50% - 15rem + 1rem)" }}
       >
         <span className="material-symbols-outlined text-[1.5rem] text-slate-950">add</span>
       </button>

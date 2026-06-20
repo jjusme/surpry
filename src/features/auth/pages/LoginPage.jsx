@@ -36,7 +36,14 @@ export function LoginPage() {
       await signInWithPassword(values);
       navigate("/inicio", { replace: true });
     } catch (error) {
-      setServerError(error.message);
+      const msg = error.message || "";
+      if (msg.includes("Invalid login credentials")) {
+        setServerError("Correo o contraseña incorrectos. Intenta de nuevo.");
+      } else if (msg.includes("Email not confirmed")) {
+        setServerError("Tu correo aún no ha sido confirmado. Revisa tu bandeja de entrada.");
+      } else {
+        setServerError("Ocurrió un error al iniciar sesión. Intenta de nuevo.");
+      }
     }
   });
 

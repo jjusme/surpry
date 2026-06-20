@@ -41,9 +41,15 @@ export function RegisterPage() {
     try {
       await signUpWithPassword(values);
       setIsSuccess(true);
-      // We don't redirect immediately so they can read the "check email" message
     } catch (error) {
-      setServerError(error.message);
+      const msg = error.message || "";
+      if (msg.includes("already registered") || msg.includes("already been registered")) {
+        setServerError("Este correo ya está registrado. Intenta con otro o inicia sesión.");
+      } else if (msg.includes("password")) {
+        setServerError("La contraseña debe tener al menos 8 caracteres.");
+      } else {
+        setServerError("Ocurrió un error al crear tu cuenta. Intenta de nuevo.");
+      }
     }
   });
 

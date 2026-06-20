@@ -394,3 +394,94 @@ export async function deleteEvent(eventId) {
     throw error;
   }
 }
+
+// --- Gift Voting ---
+
+export async function voteGift(giftOptionId) {
+  const supabase = requireSupabase();
+  const { error } = await supabase.rpc("vote_gift", { p_gift_option_id: giftOptionId });
+  if (error) throw error;
+}
+
+export async function unvoteGift(giftOptionId) {
+  const supabase = requireSupabase();
+  const { error } = await supabase.rpc("unvote_gift", { p_gift_option_id: giftOptionId });
+  if (error) throw error;
+}
+
+export async function getGiftVotes(giftOptionId) {
+  const supabase = requireSupabase();
+  const { data, error } = await supabase.rpc("get_gift_votes", { p_gift_option_id: giftOptionId });
+  if (error) throw error;
+  return data ?? [];
+}
+
+// --- Event Tasks ---
+
+export async function listEventTasks(eventId) {
+  const supabase = requireSupabase();
+  const { data, error } = await supabase
+    .from("event_tasks")
+    .select("*, profiles:assigned_to(display_name, avatar_url)")
+    .eq("event_id", eventId)
+    .order("is_completed", { ascending: true })
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function createEventTask(eventId, title, assignedTo, userId) {
+  const supabase = requireSupabase();
+  const { data, error } = await supabase
+    .from("event_tasks")
+    .insert({
+      event_id: eventId,
+      title,
+      assigned_to: assignedTo || null,
+      created_by: userId
+    })
+    .select("*, profiles:assigned_to(display_name, avatar_url)")
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function toggleEventTask(taskId, isCompleted) {
+  const supabase = requireSupabase();
+  const { error } = await supabase
+    .from("event_tasks")
+    .update({ is_completed: isCompleted, completed_at: isCompleted ? new Date().toISOString() : null })
+    .eq("id", taskId);
+  if (error) throw error;
+}
+
+export async function deleteEventTask(taskId) {
+  const supabase = requireSupabase();
+  const { error } = await supabase.from("event_tasks").delete().eq("id", taskId);
+  if (error) throw error;
+}
+
+export async function assignEventTask(taskId, userId) {
+  const supabase = requireSupabase();
+  const { error } = await supabase
+    .from("event_tasks")
+    .update({ assigned_to: userId || null })
+    .eq("id", taskId);
+  if (error) throw error;
+}
+
+// --- Complete Event ---
+
+export async function completeEvent(eventId) {
+  const supabase = requireSupabase();
+  const { error } = await supabase.rpc("complete_event", { p_event_id: eventId });
+  if (error) throw error;
+}
+
+// --- RSVP ---
+
+export async function updateRsvp(eventId, status) {
+  const supabase = requireSupabase();
+  const { error } = await supabase.rpc("update_rsvp", { p_event_id: eventId, p_status: status });
+  if (error) throw error;
+}
