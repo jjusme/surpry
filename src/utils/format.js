@@ -11,7 +11,7 @@ export function formatBirthday(day, month) {
     return "Sin fecha";
   }
 
-  const date = new Date(2026, month - 1, day);
+  const date = new Date(2000, month - 1, day);
 
   return date.toLocaleDateString("es-MX", {
     day: "numeric",
@@ -39,4 +39,13 @@ export function getInitials(name = "") {
     .slice(0, 2)
     .map((chunk) => chunk[0]?.toUpperCase())
     .join("");
+}
+
+export function daysUntilBirthday(day, month) {
+  if (!day || !month) return null;
+  const today = new Date();
+  const year = today.getFullYear();
+  let next = new Date(year, month - 1, day);
+  if (next < today) next = new Date(year + 1, month - 1, day);
+  return Math.ceil((next - today) / (1000 * 60 * 60 * 24));
 }

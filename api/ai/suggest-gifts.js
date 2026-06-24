@@ -1,10 +1,28 @@
 import { groq } from "@ai-sdk/groq";
 import { generateObject } from "ai";
 import { z } from "zod";
+import { createClient } from "@supabase/supabase-js";
+
+async function verifyAuth(req) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith("Bearer ")) return null;
+  const token = authHeader.slice(7);
+  const supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_ANON_KEY
+  );
+  const { data: { user } } = await supabase.auth.getUser(token);
+  return user;
+}
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  const user = await verifyAuth(req);
+  if (!user) {
+    return res.status(401).json({ error: "Unauthorized" });
   }
 
   const apiKey = process.env.GROQ_API_KEY;
@@ -14,6 +32,16 @@ export default async function handler(req, res) {
 
   try {
     const { birthdayName, wishlist, budget, interests, dislikes, lastGift } = req.body;
+
+    const tooLong =
+      (birthdayName?.length || 0) > 200 ||
+      (lastGift?.length || 0) > 200 ||
+      (Array.isArray(wishlist) && wishlist.length > 50) ||
+      (Array.isArray(interests) && interests.length > 50) ||
+      (Array.isArray(dislikes) && dislikes.length > 50);
+    if (tooLong) {
+      return res.status(400).json({ error: "Datos demasiado largos" });
+    }
 
     const prompt = `Eres un asistente para planear regalos de cumpleaños sorpresa en México.
 

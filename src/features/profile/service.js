@@ -24,7 +24,7 @@ export async function upsertProfile(userId, values) {
     shirt_size: values.shirt_size || null,
     shoe_size: values.shoe_size || null,
     pants_size: values.pants_size || null,
-    clothing_style: values.clothing_style || null,
+    clothing_styles: values.clothing_styles?.length ? values.clothing_styles : null,
     favorite_colors: values.favorite_colors?.length ? values.favorite_colors : null,
     favorite_brands: values.favorite_brands?.length ? values.favorite_brands : null,
     hobbies: values.hobbies?.length ? values.hobbies : null,

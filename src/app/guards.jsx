@@ -42,7 +42,22 @@ export function ProtectedRoute() {
     return <Navigate to="/setup" replace />;
   }
 
-  const pendingInvite = localStorage.getItem("pending_invite_token");
+  const pendingInviteRaw = localStorage.getItem("pending_invite_token");
+  let pendingInvite = null;
+  if (pendingInviteRaw) {
+    try {
+      const parsed = JSON.parse(pendingInviteRaw);
+      const age = Date.now() - parsed.ts;
+      if (age < 24 * 60 * 60 * 1000) {
+        pendingInvite = parsed.token;
+      } else {
+        localStorage.removeItem("pending_invite_token");
+      }
+    } catch {
+      pendingInvite = pendingInviteRaw;
+      localStorage.removeItem("pending_invite_token");
+    }
+  }
   if (pendingInvite && location.pathname === "/inicio") {
     return <Navigate to={`/join/${pendingInvite}`} replace />;
   }

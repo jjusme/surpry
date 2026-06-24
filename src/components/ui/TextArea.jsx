@@ -10,7 +10,7 @@ export const TextArea = forwardRef(function TextArea(
       ref={ref}
       rows={rows}
       className={cn(
-        "w-full rounded-2xl border border-border bg-bg-elevated px-4 py-3 text-sm text-text placeholder:text-text-muted",
+        "w-full rounded-2xl border border-border bg-bg-elevated px-4 py-3 text-sm text-text placeholder:text-text-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20",
         className
       )}
       {...props}

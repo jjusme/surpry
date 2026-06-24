@@ -1,4 +1,5 @@
-﻿import { cn } from "../../utils/cn";
+﻿import { forwardRef } from "react";
+import { cn } from "../../utils/cn";
 
 const variants = {
   primary:
@@ -9,19 +10,21 @@ const variants = {
   danger: "bg-danger text-white hover:opacity-90"
 };
 
-export function Button({
+export const Button = forwardRef(function Button({
   children,
   className,
   variant = "primary",
   size = "md",
   type = "button",
   ...props
-}) {
+}, ref) {
   return (
     <button
+      ref={ref}
       type={type}
       className={cn(
         "inline-flex items-center justify-center gap-2 font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-50",
+        size === "sm" && "h-8 rounded-lg px-3 text-xs",
         size === "md" && "h-12 rounded-xl px-5 text-sm",
         size === "lg" && "h-14 rounded-xl px-6 text-base",
         size === "pill" && "h-14 w-full rounded-full px-8 text-base font-black tracking-wide",
@@ -34,4 +37,4 @@ export function Button({
       {children}
     </button>
   );
-}
+});

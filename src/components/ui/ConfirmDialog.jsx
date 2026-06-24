@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Button } from "./Button";
 import { Card } from "./Card";
 import { cn } from "../../utils/cn";
@@ -13,20 +14,51 @@ export function ConfirmDialog({
   variant = "primary",
   isLoading = false
 }) {
+  const dialogRef = useRef(null);
+  const cancelRef = useRef(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleEscape = (e) => {
+      if (e.key === "Escape" && !isLoading) onCancel();
+    };
+    document.addEventListener("keydown", handleEscape);
+
+    cancelRef.current?.focus();
+
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [isOpen, isLoading, onCancel]);
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="confirm-dialog-title"
+      ref={dialogRef}
+    >
       {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-300" 
+      <div
+        className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-300"
         onClick={!isLoading ? onCancel : undefined}
       />
-      
+
       {/* Dialog */}
       <Card className="relative w-full max-w-xs animate-in zoom-in-95 fade-in slide-in-from-bottom-4 duration-300 shadow-float border-primary/20 p-6 space-y-6">
         <div className="space-y-2 text-center">
-          <h3 className="text-xl font-black text-text tracking-tight uppercase">
+          <h3 id="confirm-dialog-title" className="text-xl font-black text-text tracking-tight uppercase">
             {title}
           </h3>
           <p className="text-sm text-text-muted leading-relaxed">
@@ -44,6 +76,7 @@ export function ConfirmDialog({
             {isLoading ? "Procesando..." : confirmLabel}
           </Button>
           <Button
+            ref={cancelRef}
             variant="ghost"
             className="w-full h-12 text-text-muted hover:text-text"
             onClick={onCancel}

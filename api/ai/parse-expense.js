@@ -1,10 +1,28 @@
 import { groq } from "@ai-sdk/groq";
 import { generateObject } from "ai";
 import { z } from "zod";
+import { createClient } from "@supabase/supabase-js";
+
+async function verifyAuth(req) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith("Bearer ")) return null;
+  const token = authHeader.slice(7);
+  const supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_ANON_KEY
+  );
+  const { data: { user } } = await supabase.auth.getUser(token);
+  return user;
+}
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  const user = await verifyAuth(req);
+  if (!user) {
+    return res.status(401).json({ error: "Unauthorized" });
   }
 
   const apiKey = process.env.GROQ_API_KEY;
@@ -17,6 +35,10 @@ export default async function handler(req, res) {
 
     if (!text?.trim()) {
       return res.status(400).json({ error: "El texto no puede estar vacío" });
+    }
+
+    if (text.length > 2000) {
+      return res.status(400).json({ error: "El texto es demasiado largo" });
     }
 
     const participantNames = participants?.map((p) => p.name || p.display_name).join(", ") || "todos";

@@ -43,7 +43,11 @@ import { listPaymentDestinations, getProfileById } from "../../profile/service";
 import { EVENT_TABS, EXPENSE_CATEGORIES } from "../../../lib/constants";
 import { formatCurrency, formatDate } from "../../../utils/format";
 import { cn } from "../../../utils/cn";
-import { suggestGifts as suggestGiftsApi } from "../../ai/service";
+import {
+  suggestGifts as suggestGiftsApi,
+  parseExpense as parseExpenseApi,
+  getActivitySummary as getActivitySummaryApi
+} from "../../ai/service";
 import { AiSuggestionCard } from "../../../components/ui/AiSuggestionCard";
 
 const initialGiftForm = { title: "", url: "", price_estimate: "", notes: "" };
@@ -79,13 +83,20 @@ export function EventDetailPage() {
     enabled: Boolean(user?.id && isSupabaseConfigured)
   });
 
+  const giftsData = detailQuery.data?.gifts;
+  const participants = detailQuery.data?.participants || [];
+  const gifts = giftsData || [];
+  const expenses = detailQuery.data?.expenses || [];
+  const activity = detailQuery.data?.activity || [];
+  const event = detailQuery.data?.event;
+
   useEffect(() => {
     if (!eventId || !isSupabaseConfigured) return;
 
     const supabase = requireSupabase();
     const channel = supabase
       .channel(`event_${eventId}_activity`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'events', filter: `id=eq.${eventId}` }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'birthday_events', filter: `id=eq.${eventId}` }, () => {
         queryClient.invalidateQueries({ queryKey: ["event-detail", eventId] });
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'gift_options', filter: `event_id=eq.${eventId}` }, () => {
@@ -96,9 +107,6 @@ export function EventDetailPage() {
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'expense_shares' }, () => {
         queryClient.invalidateQueries({ queryKey: ["event-detail", eventId] });
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'event_messages', filter: `event_id=eq.${eventId}` }, () => {
-        queryClient.invalidateQueries({ queryKey: ["event-messages", eventId] });
       })
       .subscribe();
 
@@ -196,14 +204,14 @@ export function EventDetailPage() {
   const [newTaskTitle, setNewTaskTitle] = useState("");
 
   useEffect(() => {
-    if (!gifts.length) return;
-    gifts.forEach(async (gift) => {
+    if (!giftsData?.length) return;
+    giftsData.forEach(async (gift) => {
       try {
         const votes = await getGiftVotes(gift.id);
         setGiftVotes((prev) => ({ ...prev, [gift.id]: votes }));
       } catch {}
     });
-  }, [gifts]);
+  }, [giftsData]);
 
   const voteMutation = useMutation({
     mutationFn: ({ giftId, hasVoted }) => hasVoted ? unvoteGift(giftId) : voteGift(giftId),
@@ -284,7 +292,7 @@ export function EventDetailPage() {
     mutationFn: () => suggestGiftsApi({
       birthdayName: event?.birthday_profile?.display_name || "",
       wishlist: gifts.filter((g) => g.source_type === "wishlist").map((g) => ({ title: g.title, price_estimate: g.price_estimate })),
-      budget: null,
+      budget: priceGoal || null,
       interests: birthdayProfile?.hobbies || [],
       dislikes: birthdayProfile?.dislikes || [],
       lastGift: null
@@ -296,11 +304,56 @@ export function EventDetailPage() {
     onError: (error) => toast.error(error.message)
   });
 
-  const participants = detailQuery.data?.participants || [];
-  const gifts = detailQuery.data?.gifts || [];
-  const expenses = detailQuery.data?.expenses || [];
-  const activity = detailQuery.data?.activity || [];
-  const event = detailQuery.data?.event;
+  // --- AI Activity Summary (pestaña Resumen) ---
+  const [aiSummary, setAiSummary] = useState("");
+  const summaryMutation = useMutation({
+    mutationFn: () => getActivitySummaryApi({
+      participantCount: participants.length,
+      giftsCount: gifts.length,
+      totalExpenses,
+      pendingPayments: expenses.reduce(
+        (acc, e) => acc + (e.shares || []).filter((s) => s.status === "pending").length,
+        0
+      ),
+      eventStatus: event?.status
+    }),
+    onSuccess: (data) => setAiSummary(data.summary || ""),
+    onError: (error) => toast.error(error.message)
+  });
+
+  // --- AI Expense Parsing (pestaña Gastos) ---
+  const [expenseText, setExpenseText] = useState("");
+  const parseExpenseMutation = useMutation({
+    mutationFn: () => parseExpenseApi(
+      expenseText,
+      participants.map((p) => ({
+        name: p.is_virtual ? p.display_name : p.profiles?.display_name
+      }))
+    ),
+    onSuccess: (data) => {
+      setExpenseForm((c) => ({
+        ...c,
+        title: data.title || c.title,
+        amount: data.amount != null ? String(data.amount) : c.amount,
+        category: data.category || c.category
+      }));
+      setSplitType(data.split_equally ? "equal" : "manual");
+
+      const mentioned = (data.participants_mentioned || []).map((n) => n.toLowerCase());
+      const matchedIds = mentioned.length
+        ? participants
+            .filter((p) => {
+              const name = (p.is_virtual ? p.display_name : p.profiles?.display_name) || "";
+              return mentioned.some((m) => name.toLowerCase().includes(m) || m.includes(name.toLowerCase()));
+            })
+            .map((p) => p.id)
+        : participants.map((p) => p.id);
+      if (matchedIds.length) setSelectedParticipants(matchedIds);
+
+      toast.success("Gasto pre-llenado. Revisa los datos antes de guardar.");
+    },
+    onError: (error) => toast.error(error.message)
+  });
 
   const totalExpenses = expenses.reduce((acc, e) => acc + Number(e.amount || 0), 0);
   const priceGoal = gifts.find((g) => g.price_estimate)?.price_estimate || 0;
@@ -444,7 +497,8 @@ export function EventDetailPage() {
             <div className="w-full pt-2">
               <CountdownTimer
                 targetDate={event.birthday_date}
-                passedLabel={event?.event_type === 'gathering' ? '¡Es hoy! 🎉' : '¡El cumpleaños ha llegado! 🎉'}
+                todayLabel={event?.event_type === 'gathering' ? '¡Es hoy! 🎉' : '¡Hoy es su cumpleaños! 🎉'}
+                passedLabel={event?.event_type === 'gathering' ? 'Ya fue el convivio 🎉' : 'El cumpleaños ya pasó 🎉'}
               />
             </div>
           )}
@@ -506,6 +560,31 @@ export function EventDetailPage() {
                 <Button variant="primary" size="lg" className="w-full" onClick={() => completeEventMutation.mutate()} disabled={completeEventMutation.isPending}>
                   {completeEventMutation.isPending ? "Completando..." : "Marcar como completado"}
                 </Button>
+              )}
+            </Card>
+
+            {/* AI Activity Summary */}
+            <Card className="space-y-3 p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[1rem] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">Resumen con IA</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => summaryMutation.mutate()}
+                  disabled={summaryMutation.isPending}
+                  className="text-xs font-bold text-primary hover:text-primary-strong disabled:opacity-50"
+                >
+                  {summaryMutation.isPending ? "Generando..." : (aiSummary ? "Actualizar" : "Generar")}
+                </button>
+              </div>
+              {aiSummary ? (
+                <p className="text-sm font-medium text-text leading-relaxed">{aiSummary}</p>
+              ) : (
+                <p className="text-sm font-medium text-text-muted italic">
+                  Obtén un resumen rápido del estado del plan generado con IA.
+                </p>
               )}
             </Card>
 
@@ -803,6 +882,28 @@ export function EventDetailPage() {
                 <p className="text-sm font-medium text-text-muted mt-1 leading-relaxed">
                   ¿Pagaste algo? Regístralo aquí para que los demás te paguen su parte.
                 </p>
+              </div>
+              <div className="rounded-2xl border border-primary/20 bg-primary/5 p-3 space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[1rem] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Captura rápida con IA</p>
+                </div>
+                <TextArea
+                  rows={2}
+                  placeholder="Ej. Pagué el pastel, 500 pesos, a la mitad con Ana y Luis"
+                  value={expenseText}
+                  onChange={(e) => setExpenseText(e.target.value)}
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => parseExpenseMutation.mutate()}
+                  disabled={parseExpenseMutation.isPending || !expenseText.trim()}
+                >
+                  {parseExpenseMutation.isPending ? "Analizando..." : "Analizar con IA"}
+                </Button>
               </div>
               <form className="space-y-4" onSubmit={submitExpense}>
                 <FormField label="¿Qué se compró?">

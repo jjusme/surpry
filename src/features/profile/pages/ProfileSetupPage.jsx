@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -14,6 +14,68 @@ import { Input } from "../../../components/ui/Input";
 import { Select } from "../../../components/ui/Select";
 import { SizeSelector } from "../../../components/ui/SizeSelector";
 import { TagInput } from "../../../components/ui/TagInput";
+
+function StylePicker({ value = [], onChange }) {
+  const [showInput, setShowInput] = useState(false);
+  const [customInput, setCustomInput] = useState("");
+  const inputRef = useRef(null);
+
+  const toggle = (style) => {
+    if (value.includes(style)) onChange(value.filter((v) => v !== style));
+    else onChange([...value, style]);
+  };
+
+  const addCustom = () => {
+    const trimmed = customInput.trim();
+    if (trimmed && !value.includes(trimmed)) onChange([...value, trimmed]);
+    setCustomInput("");
+    setShowInput(false);
+  };
+
+  const openInput = () => {
+    setShowInput(true);
+    setTimeout(() => inputRef.current?.focus(), 0);
+  };
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-bold uppercase tracking-[0.18em] text-text-muted">Estilo de vestir</p>
+      <div className="flex flex-wrap gap-2">
+        {CLOTHING_STYLE_SUGGESTIONS.map((s) => {
+          const selected = value.includes(s);
+          return (
+            <button key={s} type="button" onClick={() => toggle(s)}
+              className={`h-9 rounded-xl px-4 text-sm font-bold transition-all border ${selected ? "bg-primary text-slate-950 border-primary shadow-float" : "bg-bg-elevated text-text border-border hover:border-primary/50"}`}>
+              {s}
+            </button>
+          );
+        })}
+        {value.filter((v) => !CLOTHING_STYLE_SUGGESTIONS.includes(v)).map((v) => (
+          <button key={v} type="button" onClick={() => toggle(v)}
+            className="inline-flex items-center gap-1 h-9 rounded-xl px-4 text-sm font-bold bg-primary text-slate-950 border border-primary shadow-float">
+            {v}
+            <span className="material-symbols-outlined text-[0.85rem] ml-1">close</span>
+          </button>
+        ))}
+        {!showInput && (
+          <button type="button" onClick={openInput}
+            className="h-9 rounded-xl px-3 text-sm font-bold border border-dashed border-border text-text-muted hover:border-primary/50 hover:text-text transition-all">
+            + Otro
+          </button>
+        )}
+      </div>
+      {showInput && (
+        <div className="flex items-center gap-2">
+          <input ref={inputRef} type="text" value={customInput} onChange={(e) => setCustomInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCustom(); } if (e.key === "Escape") { setShowInput(false); setCustomInput(""); } }}
+            onBlur={addCustom}
+            placeholder="Ej. Gótico, Y2K, Dark academic..."
+            className="flex-1 h-9 rounded-xl border border-primary bg-bg-elevated px-3 text-sm text-text placeholder:text-text-muted outline-none" />
+        </div>
+      )}
+    </div>
+  );
+}
 import { LoadingState } from "../../../components/feedback/LoadingState";
 import { ErrorState } from "../../../components/feedback/ErrorState";
 import { useAuth } from "../../auth/AuthContext";
@@ -31,12 +93,7 @@ const months = [
   [9, "Septiembre"], [10, "Octubre"], [11, "Noviembre"], [12, "Diciembre"]
 ];
 
-const CLOTHING_STYLES = [
-  { value: "casual", label: "Casual" },
-  { value: "deportivo", label: "Deportivo" },
-  { value: "formal", label: "Formal" },
-  { value: "mixto", label: "Mixto" }
-];
+const CLOTHING_STYLE_SUGGESTIONS = ["Casual", "Deportivo", "Formal", "Elegante", "Streetwear", "Bohemio", "Vintage", "Minimalista"];
 
 export function ProfileSetupPage() {
   const navigate = useNavigate();
@@ -47,7 +104,7 @@ export function ProfileSetupPage() {
   const [avatarPreview, setAvatarPreview] = useState("");
   const [isUploading, setIsUploading] = useState(false);
 
-  const [sizes, setSizes] = useState({ shirt_size: "", shoe_size: "", pants_size: "", clothing_style: "" });
+  const [sizes, setSizes] = useState({ shirt_size: "", shoe_size: "", pants_size: "", clothing_styles: [] });
   const [preferences, setPreferences] = useState({
     favorite_colors: [], favorite_brands: [], hobbies: [],
     dietary_restrictions: [], dislikes: []
@@ -84,7 +141,7 @@ export function ProfileSetupPage() {
         shirt_size: p.shirt_size || "",
         shoe_size: p.shoe_size || "",
         pants_size: p.pants_size || "",
-        clothing_style: p.clothing_style || ""
+        clothing_styles: p.clothing_styles || []
       });
       setPreferences({
         favorite_colors: p.favorite_colors || [],
@@ -134,11 +191,11 @@ export function ProfileSetupPage() {
 
   const handleSave = async () => {
     setServerError("");
-    const step1Data = { display_name: "", birthday_day: "", birthday_month: "" };
+    const step1Data = getValues();
     try {
       await saveMutation.mutateAsync({
         ...step1Data,
-        avatar_url: avatarPreview,
+        avatar_url: avatarPreview || null,
         ...sizes,
         ...preferences,
         has_completed_setup: true
@@ -267,17 +324,10 @@ export function ProfileSetupPage() {
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-text-muted">Talla de pantalón</p>
                 <Input placeholder="Ej. 30, 29x32" value={sizes.pants_size} onChange={(e) => setSizes((s) => ({ ...s, pants_size: e.target.value }))} />
               </div>
-              <div className="space-y-2">
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-text-muted">Estilo</p>
-                <div className="flex flex-wrap gap-2">
-                  {CLOTHING_STYLES.map((s) => (
-                    <button key={s.value} type="button" onClick={() => setSizes((prev) => ({ ...prev, clothing_style: prev.clothing_style === s.value ? "" : s.value }))}
-                      className={`h-10 rounded-xl px-4 text-sm font-bold transition-all border ${sizes.clothing_style === s.value ? "bg-primary text-slate-950 border-primary shadow-float" : "bg-bg-elevated text-text border-border hover:border-primary/50"}`}>
-                      {s.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <StylePicker
+                value={sizes.clothing_styles}
+                onChange={(v) => setSizes((prev) => ({ ...prev, clothing_styles: v }))}
+              />
             </Card>
 
             {serverError && <p className="text-sm font-medium text-danger bg-danger/5 p-3 rounded-xl border border-danger/20">{serverError}</p>}

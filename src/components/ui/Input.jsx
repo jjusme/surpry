@@ -10,7 +10,7 @@ export const Input = forwardRef(function Input(
       ref={ref}
       type={type}
       className={cn(
-        "h-12 w-full rounded-2xl border border-border bg-bg-elevated px-4 text-sm text-text placeholder:text-text-muted",
+        "h-12 w-full rounded-2xl border border-border bg-bg-elevated px-4 text-sm text-text placeholder:text-text-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20",
         className
       )}
       {...props}

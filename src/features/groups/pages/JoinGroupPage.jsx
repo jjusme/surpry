@@ -21,11 +21,11 @@ export function JoinGroupPage() {
     enabled: Boolean(token && isSupabaseConfigured)
   });
 
-  // Persist token for post-auth redirection
+  // Persist token for post-auth redirection (with 24h TTL)
   useEffect(() => {
     if (token) {
       if (!user) {
-        localStorage.setItem("pending_invite_token", token);
+        localStorage.setItem("pending_invite_token", JSON.stringify({ token, ts: Date.now() }));
       } else {
         localStorage.removeItem("pending_invite_token");
       }

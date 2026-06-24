@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Button } from "../../../components/ui/Button";
 import { Card } from "../../../components/ui/Card";
 import { FormField } from "../../../components/ui/FormField";
@@ -17,7 +17,6 @@ const schema = z.object({
 });
 
 export function RegisterPage() {
-  const navigate = useNavigate();
   const { isSupabaseConfigured } = useAuth();
   const [serverError, setServerError] = useState("");
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);

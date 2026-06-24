@@ -131,7 +131,7 @@ export function CreateGatheringPage() {
                   placeholder="Nombre del invitado"
                   value={newVirtual}
                   onChange={(e) => setNewVirtual(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addVirtual())}
+                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addVirtual())}
                 />
                 <Button type="button" variant="secondary" onClick={addVirtual} className="flex-shrink-0 size-11 p-0 rounded-2xl">
                   <span className="material-symbols-outlined">add</span>

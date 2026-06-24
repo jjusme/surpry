@@ -8,7 +8,10 @@ export default async function handler(req, res) {
   const authHeader = req.headers.authorization;
   const expected = `Bearer ${process.env.CRON_SECRET}`;
 
-  if (process.env.CRON_SECRET && authHeader !== expected) {
+  if (!process.env.CRON_SECRET) {
+    return res.status(500).json({ error: "CRON_SECRET not configured" });
+  }
+  if (authHeader !== expected) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 

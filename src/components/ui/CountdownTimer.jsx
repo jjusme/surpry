@@ -1,12 +1,26 @@
 import { useEffect, useState } from "react";
 
+function parseLocalDate(targetDate) {
+    // Date-only strings like "2026-03-23" are parsed as UTC midnight by default,
+    // which causes off-by-one day issues in local timezones. Parse as local time instead.
+    if (typeof targetDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(targetDate)) {
+        const [y, m, d] = targetDate.split("-").map(Number);
+        return new Date(y, m - 1, d);
+    }
+    return new Date(targetDate);
+}
+
 function getTimeLeft(targetDate) {
     const now = new Date();
-    const target = new Date(targetDate);
+    const target = parseLocalDate(targetDate);
     const diff = target - now;
 
     if (diff <= 0) {
-        return { days: 0, hours: 0, minutes: 0, seconds: 0, passed: true };
+        const isToday =
+            target.getFullYear() === now.getFullYear() &&
+            target.getMonth() === now.getMonth() &&
+            target.getDate() === now.getDate();
+        return { days: 0, hours: 0, minutes: 0, seconds: 0, passed: true, isToday };
     }
 
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
@@ -14,7 +28,7 @@ function getTimeLeft(targetDate) {
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
     const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
-    return { days, hours, minutes, seconds, passed: false };
+    return { days, hours, minutes, seconds, passed: false, isToday: false };
 }
 
 function Chip({ value, label }) {
@@ -30,11 +44,11 @@ function Chip({ value, label }) {
     );
 }
 
-/**
- * CountdownTimer — live countdown to a target date.
- * @param {string} targetDate  ISO date string or Date-compatible value
- */
-export function CountdownTimer({ targetDate, passedLabel = '¡El cumpleaños ha llegado! 🎉' }) {
+export function CountdownTimer({
+    targetDate,
+    todayLabel,
+    passedLabel = '¡Ya pasó! 🎉',
+}) {
     const [timeLeft, setTimeLeft] = useState(() => getTimeLeft(targetDate));
 
     useEffect(() => {
@@ -46,9 +60,10 @@ export function CountdownTimer({ targetDate, passedLabel = '¡El cumpleaños ha 
     }, [targetDate]);
 
     if (timeLeft.passed) {
+        const label = timeLeft.isToday && todayLabel ? todayLabel : passedLabel;
         return (
             <p className="text-center text-sm font-bold text-success">
-                {passedLabel}
+                {label}
             </p>
         );
     }

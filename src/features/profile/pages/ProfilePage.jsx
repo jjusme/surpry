@@ -105,7 +105,7 @@ export function ProfilePage() {
   const profile = profileQuery.data;
   const displayName = profile?.display_name || user.user_metadata?.display_name || user.email;
 
-  const hasSizes = profile?.shirt_size || profile?.shoe_size || profile?.pants_size;
+  const hasSizes = profile?.shirt_size || profile?.shoe_size || profile?.pants_size || profile?.clothing_styles?.length;
   const hasPreferences = profile?.favorite_colors?.length || profile?.favorite_brands?.length || profile?.hobbies?.length;
   const hasDietary = profile?.dietary_restrictions?.length;
   const hasDislikes = profile?.dislikes?.length;
@@ -165,7 +165,7 @@ export function ProfilePage() {
                   {profile.shirt_size && <span className="font-semibold text-text">Camisa: <span className="text-primary-strong">{profile.shirt_size}</span></span>}
                   {profile.shoe_size && <span className="font-semibold text-text">Zapato: <span className="text-primary-strong">{profile.shoe_size}</span></span>}
                   {profile.pants_size && <span className="font-semibold text-text">Pantalón: <span className="text-primary-strong">{profile.pants_size}</span></span>}
-                  {profile.clothing_style && <span className="font-semibold text-text">Estilo: <span className="text-primary-strong capitalize">{profile.clothing_style}</span></span>}
+                  {profile.clothing_styles?.length > 0 && <span className="font-semibold text-text">Estilo: <span className="text-primary-strong capitalize">{profile.clothing_styles.join(", ")}</span></span>}
                 </div>
               </Card>
             )}
@@ -219,7 +219,7 @@ export function ProfilePage() {
           ) : (
             <div className="grid gap-3">
               {wishlistQuery.data?.map(item => (
-                <Card key={item.id} className="p-4 space-y-3 bg-white/40 border-none shadow-sm hover:ring-2 hover:ring-primary/20 transition-all">
+                <Card key={item.id} className="p-4 space-y-3 bg-surface/50 border-none shadow-sm hover:ring-2 hover:ring-primary/20 transition-all">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <p className="font-bold text-text truncate">{item.title}</p>
@@ -245,7 +245,7 @@ export function ProfilePage() {
         {isOwnProfile && (
           <div className="space-y-3">
             {ROW_ITEMS.map((item) => (
-              <Link key={item.key} to={item.href} className="flex items-center gap-4 rounded-[1.75rem] bg-white px-5 py-4 shadow-sm border border-primary/5 hover:border-primary/20 transition-all active:scale-[0.98]">
+              <Link key={item.key} to={item.href} className="flex items-center gap-4 rounded-[1.75rem] bg-surface px-5 py-4 shadow-sm border border-primary/5 hover:border-primary/20 transition-all active:scale-[0.98]">
                 <div className="flex size-11 flex-shrink-0 items-center justify-center rounded-2xl bg-primary/12">
                   <span className="material-symbols-outlined text-[1.25rem] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>{item.icon}</span>
                 </div>

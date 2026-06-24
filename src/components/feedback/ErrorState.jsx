@@ -2,8 +2,8 @@
 import { Card } from "../ui/Card";
 
 export function ErrorState({
-  title = "Algo salio mal",
-  description = "No pudimos cargar esta seccion.",
+  title = "Algo salió mal",
+  description = "No pudimos cargar esta sección.",
   onRetry,
   compact = false
 }) {

@@ -10,7 +10,6 @@ import { EmptyState } from "../../../components/feedback/EmptyState";
 import { Button } from "../../../components/ui/Button";
 import { useAuth } from "../../auth/AuthContext";
 import { listEvents } from "../service";
-import { formatDate } from "../../../utils/format";
 
 export function EventsListPage() {
   const navigate = useNavigate();

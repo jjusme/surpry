@@ -11,7 +11,7 @@ const items = [
 
 export function BottomNav({ activeTab }) {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-bg/95 backdrop-blur-md">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-bg/95 backdrop-blur-md" aria-label="Navegación principal">
       <div className="mx-auto flex max-w-[30rem] items-center justify-around px-2 pb-5 pt-2">
         {items.map((item) => {
           const isActive = item.id === activeTab;
@@ -20,6 +20,7 @@ export function BottomNav({ activeTab }) {
             <Link
               key={item.id}
               to={item.to}
+              aria-current={isActive ? "page" : undefined}
               className={cn(
                 "flex min-w-0 flex-col items-center gap-0.5 rounded-2xl px-4 py-2 text-[11px] font-semibold transition-all duration-200",
                 isActive

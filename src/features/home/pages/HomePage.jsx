@@ -16,67 +16,9 @@ import { WelcomeWizard } from "../../../components/ui/WelcomeWizard";
 import { useAuth } from "../../auth/AuthContext";
 import { listGroups } from "../../groups/service";
 import { listEvents } from "../../events/service";
-import { requireSupabase } from "../../../lib/supabase";
-import { formatDate, formatCurrency } from "../../../utils/format";
+import { getPendingShares, getReportedShares, getUnreadNotifications, listManualBirthdays, markNotificationRead } from "../service";
+import { formatDate, formatCurrency, daysUntilBirthday } from "../../../utils/format";
 import { cn } from "../../../utils/cn";
-
-async function getPendingShares(userId) {
-  const supabase = requireSupabase();
-  const { data, error } = await supabase
-    .from("expense_shares")
-    .select(`*, expenses (id, title, amount, event_id)`)
-    .eq("user_id", userId)
-    .in("status", ["pending", "rejected"])
-    .order("created_at", { ascending: false })
-    .limit(5);
-  if (error) throw error;
-  return data ?? [];
-}
-
-async function getReportedShares(userId) {
-  const supabase = requireSupabase();
-  const { data, error } = await supabase
-    .from("expense_shares")
-    .select(`*, expenses (id, title, amount, event_id)`)
-    .eq("user_id", userId)
-    .eq("status", "reported_paid")
-    .order("created_at", { ascending: false })
-    .limit(5);
-  if (error) throw error;
-  return data ?? [];
-}
-
-async function getNotifications(userId) {
-  const supabase = requireSupabase();
-  const { data, error } = await supabase
-    .from("notifications")
-    .select("*")
-    .eq("user_id", userId)
-    .is("read_at", null)
-    .order("created_at", { ascending: false })
-    .limit(5);
-  if (error) throw error;
-  return data ?? [];
-}
-
-async function listManualBirthdays(userId) {
-  const supabase = requireSupabase();
-  const { data, error } = await supabase
-    .from("manual_birthdays")
-    .select("*")
-    .eq("user_id", userId);
-  if (error) throw error;
-  return data ?? [];
-}
-
-function daysUntilBirthday(day, month) {
-  if (!day || !month) return null;
-  const today = new Date();
-  const year = today.getFullYear();
-  let next = new Date(year, month - 1, day);
-  if (next < today) next = new Date(year + 1, month - 1, day);
-  return Math.ceil((next - today) / (1000 * 60 * 60 * 24));
-}
 
 export function HomePage() {
   const navigate = useNavigate();
@@ -101,7 +43,7 @@ export function HomePage() {
   });
   const notificationsQuery = useQuery({
     queryKey: ["notifications", user?.id],
-    queryFn: () => getNotifications(user.id),
+    queryFn: () => getUnreadNotifications(user.id),
     enabled: Boolean(user?.id && isSupabaseConfigured)
   });
 
@@ -118,14 +60,7 @@ export function HomePage() {
   });
 
   const markReadMutation = useMutation({
-    mutationFn: async (id) => {
-      const supabase = requireSupabase();
-      const { error } = await supabase
-        .from("notifications")
-        .update({ read_at: new Date().toISOString() })
-        .eq("id", id);
-      if (error) throw error;
-    },
+    mutationFn: (id) => markNotificationRead(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications", user.id] })
   });
 
