@@ -70,6 +70,6 @@ Reglas:
     return res.status(200).json(object);
   } catch (error) {
     console.error("AI parse-expense error:", error);
-    return res.status(500).json({ error: "Error al analizar el gasto" });
+    return res.status(500).json({ error: `Error al analizar el gasto: ${error?.message || error}` });
   }
 }

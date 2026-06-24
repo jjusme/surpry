@@ -54,6 +54,6 @@ Escribe solo el resumen, sin explicaciones adicionales.`;
     return res.status(200).json({ summary: text.trim() });
   } catch (error) {
     console.error("AI activity-summary error:", error);
-    return res.status(500).json({ error: "Error al generar resumen" });
+    return res.status(500).json({ error: `Error al generar resumen: ${error?.message || error}` });
   }
 }

@@ -76,6 +76,6 @@ Solo incluye regalo que estén dentro del presupuesto.`;
     return res.status(200).json(object);
   } catch (error) {
     console.error("AI suggest-gifts error:", error);
-    return res.status(500).json({ error: "Error al generar sugerencias" });
+    return res.status(500).json({ error: `Error al generar sugerencias: ${error?.message || error}` });
   }
 }
