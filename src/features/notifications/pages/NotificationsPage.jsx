@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+﻿import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
@@ -13,7 +13,7 @@ import { useAuth } from "../../auth/AuthContext";
 import { listNotifications, markAllNotificationsRead, markNotificationRead } from "../service";
 import { requireSupabase } from "../../../lib/supabase";
 import { cn } from "../../../utils/cn";
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 
 export function NotificationsPage() {
     const navigate = useNavigate();

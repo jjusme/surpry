@@ -1,3 +1,4 @@
+import React from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { LoadingState } from "../components/feedback/LoadingState";

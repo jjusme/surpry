@@ -1,4 +1,4 @@
-import { Suspense, lazy } from "react";
+import React, { Suspense, lazy } from "react";
 import { Navigate, createBrowserRouter } from "react-router-dom";
 import { LoadingState } from "../components/feedback/LoadingState";
 import { ProtectedRoute, PublicOnlyRoute } from "./guards";

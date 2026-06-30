@@ -1,3 +1,4 @@
+﻿import React from "react";
 import { cn } from "../../utils/cn";
 
 const SIZES = ["XS", "S", "M", "L", "XL", "XXL"];

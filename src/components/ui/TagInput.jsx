@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import React, { useState } from "react";
 import { cn } from "../../utils/cn";
 
 export function TagInput({ value = [], onChange, placeholder = "Agregar...", maxTags = 10, className }) {

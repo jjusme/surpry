@@ -1,4 +1,5 @@
-﻿import { BottomNav } from "./BottomNav";
+﻿import React from "react";
+import { BottomNav } from "./BottomNav";
 import { cn } from "../../utils/cn";
 
 export function AppShell({
