@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-hot-toast";
@@ -10,29 +11,39 @@ import { LoadingState } from "../../../components/feedback/LoadingState";
 import { ErrorState } from "../../../components/feedback/ErrorState";
 import { useAuth } from "../../auth/AuthContext";
 import { signOut } from "../../auth/api";
-import { getMyProfile, getProfileById, listPaymentDestinations, uploadAvatar, upsertProfile } from "../service";
+import {
+  getMyProfile,
+  getProfileById,
+  listPaymentDestinations,
+  uploadAvatar,
+  upsertProfile
+} from "../service";
 import { listMyWishlist } from "../../wishlist/service";
-import { formatBirthday } from "../../../utils/format";
+import { formatBirthday, formatCurrency } from "../../../utils/format";
 import { cn } from "../../../utils/cn";
-import { useState } from "react";
 
-const ROW_ITEMS = [
-  { key: "birthday", icon: "cake", label: "Cumpleaños", section: "INFORMACIÓN", href: "/setup" },
-  { key: "wishlist", icon: "card_giftcard", label: "Mi wishlist", section: "INFORMACIÓN", href: "/wishlist" },
-  { key: "payments", icon: "payments", label: "Métodos de reembolso", section: "FINANZAS", href: "/perfil/metodos" }
+const INFO_TILES = [
+  { key: "birthday", icon: "cake", label: "Cumpleaños", href: "/setup" },
+  { key: "wishlist", icon: "card_giftcard", label: "Wishlist", href: "/wishlist" }
 ];
 
 function ChipList({ items, color = "primary" }) {
-  if (!items?.length) return null;
+  if (!items?.length) {
+    return null;
+  }
+
   return (
     <div className="flex flex-wrap gap-1.5">
       {items.map((item) => (
-        <span key={item} className={cn(
-          "inline-block rounded-full px-3 py-1 text-xs font-bold",
-          color === "primary" && "bg-primary/10 text-primary-strong",
-          color === "danger" && "bg-danger/10 text-danger",
-          color === "success" && "bg-success/10 text-success"
-        )}>
+        <span
+          key={item}
+          className={cn(
+            "inline-block rounded-full px-3 py-1 text-xs font-bold",
+            color === "primary" && "bg-primary/10 text-primary-strong",
+            color === "danger" && "bg-danger/10 text-danger",
+            color === "success" && "bg-success/10 text-success"
+          )}
+        >
           {item}
         </span>
       ))}
@@ -55,54 +66,80 @@ export function ProfilePage() {
     queryFn: () => isOwnProfile ? getMyProfile(effectiveUserId) : getProfileById(effectiveUserId),
     enabled: Boolean(effectiveUserId && isSupabaseConfigured)
   });
+
   const wishlistQuery = useQuery({
     queryKey: ["wishlist", effectiveUserId],
     queryFn: () => listMyWishlist(effectiveUserId),
     enabled: Boolean(effectiveUserId && isSupabaseConfigured)
   });
+
   const paymentQuery = useQuery({
     queryKey: ["payment-destinations", effectiveUserId],
     queryFn: () => listPaymentDestinations(effectiveUserId),
-    enabled: Boolean(effectiveUserId && isSupabaseConfigured)
+    enabled: Boolean(isOwnProfile && effectiveUserId && isSupabaseConfigured)
   });
+
   const signOutMutation = useMutation({
     mutationFn: signOut,
     onSuccess: () => navigate("/login", { replace: true })
   });
 
-  const handleAvatarChange = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleAvatarChange = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
     setIsUploading(true);
     try {
       const url = await uploadAvatar(user.id, file);
       await upsertProfile(user.id, { avatar_url: url });
       await queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
       toast.success("Foto actualizada");
-    } catch (error) {
+    } catch {
       toast.error("Error al actualizar foto");
     } finally {
       setIsUploading(false);
     }
   };
 
-  if (!user) return <LoadingState message="Cargando perfil..." fullScreen />;
-  if (profileQuery.isLoading || wishlistQuery.isLoading || paymentQuery.isLoading) {
+  if (!user) {
+    return <LoadingState message="Cargando perfil..." fullScreen />;
+  }
+
+  if (
+    profileQuery.isLoading ||
+    wishlistQuery.isLoading ||
+    (isOwnProfile && paymentQuery.isLoading)
+  ) {
     return <LoadingState message="Cargando tu perfil..." fullScreen />;
   }
-  if (profileQuery.error || wishlistQuery.error || paymentQuery.error) {
+
+  if (
+    profileQuery.error ||
+    wishlistQuery.error ||
+    (isOwnProfile && paymentQuery.error)
+  ) {
     return (
       <div className="app-frame flex items-center px-4">
         <ErrorState
           title="No pudimos cargar tu perfil"
           description={profileQuery.error?.message || wishlistQuery.error?.message || paymentQuery.error?.message}
-          onRetry={() => { profileQuery.refetch(); wishlistQuery.refetch(); paymentQuery.refetch(); }}
+          onRetry={() => {
+            profileQuery.refetch();
+            wishlistQuery.refetch();
+            if (isOwnProfile) {
+              paymentQuery.refetch();
+            }
+          }}
         />
       </div>
     );
   }
 
   const profile = profileQuery.data;
+  const wishlistItems = wishlistQuery.data || [];
+  const paymentDestinations = isOwnProfile ? (paymentQuery.data || []) : [];
   const displayName = profile?.display_name || user.user_metadata?.display_name || user.email;
 
   const hasSizes = profile?.shirt_size || profile?.shoe_size || profile?.pants_size || profile?.clothing_styles?.length;
@@ -110,54 +147,108 @@ export function ProfilePage() {
   const hasDietary = profile?.dietary_restrictions?.length;
   const hasDislikes = profile?.dislikes?.length;
 
-  const getSublabel = (key) => {
-    if (key === "birthday") return profile ? formatBirthday(profile.birthday_day, profile.birthday_month) : "Sin capturar";
-    if (key === "wishlist") { const c = wishlistQuery.data.length; return `${c} ${c === 1 ? 'artículo' : 'artículos'}`; }
-    if (key === "payments") return `${paymentQuery.data.length} configurado(s)`;
-    return "";
+  const infoValues = {
+    birthday: profile ? formatBirthday(profile.birthday_day, profile.birthday_month) : "Sin capturar",
+    wishlist: `${wishlistItems.length} ${wishlistItems.length === 1 ? "artículo" : "artículos"}`
   };
 
   return (
-    <AppShell activeTab="perfil" header={<PageHeader title={isOwnProfile ? "Mi Perfil" : "Perfil"} backTo={isOwnProfile ? null : "/inicio"} />}>
+    <AppShell
+      activeTab="perfil"
+      header={<PageHeader title={isOwnProfile ? "Mi perfil" : "Perfil"} backTo={isOwnProfile ? null : "/inicio"} />}
+    >
       <div className="space-y-6 pt-4">
-        {/* Profile hero */}
-        <div className="flex flex-col items-center gap-4 py-4 px-4 bg-gradient-to-b from-primary/10 to-transparent rounded-[3rem] -mx-2">
+        <div className="mx-[-0.5rem] flex flex-col items-center gap-4 rounded-[3rem] bg-gradient-to-b from-primary/10 to-transparent px-4 py-4">
           <div className="relative">
-            <Avatar name={displayName} url={profile?.avatar_url} className="size-28 text-2xl shadow-xl ring-offset-4 ring-offset-bg" ring />
+            <Avatar
+              name={displayName}
+              url={profile?.avatar_url}
+              className="size-28 text-2xl shadow-xl ring-offset-4 ring-offset-bg"
+              ring
+            />
             {isUploading && (
-              <div className="absolute inset-0 bg-slate-900/60 rounded-full flex items-center justify-center p-[3px]">
-                <div className="size-full bg-slate-900/40 rounded-full flex items-center justify-center">
-                  <span className="material-symbols-outlined text-white animate-spin">sync</span>
+              <div className="absolute inset-0 flex items-center justify-center rounded-full bg-slate-900/60 p-[3px]">
+                <div className="flex size-full items-center justify-center rounded-full bg-slate-900/40">
+                  <span className="material-symbols-outlined animate-spin text-white">sync</span>
                 </div>
               </div>
             )}
             {isOwnProfile && (
-              <label className="absolute -bottom-1 -right-1 size-10 bg-primary text-slate-950 rounded-2xl flex items-center justify-center cursor-pointer shadow-float hover:scale-110 active:scale-95 transition-all">
+              <label className="absolute -bottom-1 -right-1 flex size-10 cursor-pointer items-center justify-center rounded-2xl bg-primary text-slate-950 shadow-float transition-all hover:scale-110 active:scale-95">
                 <input type="file" className="hidden" accept="image/*" onChange={handleAvatarChange} disabled={isUploading} />
                 <span className="material-symbols-outlined text-[1.25rem]">photo_camera</span>
               </label>
             )}
           </div>
-          <div className="text-center">
-            <h2 className="text-2xl font-black text-text tracking-tight">{displayName}</h2>
-            {isOwnProfile && <p className="text-sm font-medium text-text-muted">{user.email}</p>}
+
+          <div className="space-y-1 text-center">
+            <h2 className="text-2xl font-black tracking-tight text-text">{displayName}</h2>
+            {isOwnProfile ? (
+              <p className="text-sm font-medium text-text-muted">{user.email}</p>
+            ) : (
+              <p className="text-sm font-medium text-text-muted">
+                Perfil compartido contigo por un grupo en común
+              </p>
+            )}
           </div>
         </div>
 
-        {/* Public Profile Info */}
+        {isOwnProfile && (
+          <section className="space-y-3">
+            <div className="px-1">
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-text-muted">Tu info</p>
+              <p className="text-sm text-text-muted">
+                Lo que ya tienes listo para que tus grupos te entiendan rápido.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              {INFO_TILES.map((item) => (
+                <Link key={item.key} to={item.href}>
+                  <Card className="space-y-3 p-4 transition-all active:scale-[0.99]">
+                    <div className="flex size-11 items-center justify-center rounded-2xl bg-primary/12">
+                      <span className="material-symbols-outlined text-[1.2rem] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>
+                        {item.icon}
+                      </span>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-black text-text">{item.label}</p>
+                      <p className="text-xs leading-relaxed text-text-muted">
+                        {infoValues[item.key]}
+                      </p>
+                    </div>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
         {!isOwnProfile && profile?.birthday_day && (
-          <div className="px-5 py-4 rounded-3xl bg-surface/50 border border-border/50 flex items-center justify-between">
+          <Card className="flex items-center justify-between p-4">
             <div className="flex items-center gap-3">
               <span className="material-symbols-outlined text-primary">cake</span>
               <span className="text-sm font-bold text-text-muted">Cumpleaños</span>
             </div>
-            <span className="text-sm font-black text-text">{formatBirthday(profile.birthday_day, profile.birthday_month)}</span>
-          </div>
+            <span className="text-sm font-black text-text">
+              {formatBirthday(profile.birthday_day, profile.birthday_month)}
+            </span>
+          </Card>
         )}
 
-        {/* Enriched Profile Sections (visible to all) */}
         {(hasSizes || hasPreferences || hasDietary || hasDislikes) && (
-          <div className="space-y-3 px-1">
+          <section className="space-y-3 px-1">
+            <div className="space-y-1">
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-text-muted">
+                {isOwnProfile ? "Preferencias compartidas" : "Pistas útiles"}
+              </p>
+              <p className="text-sm text-text-muted">
+                {isOwnProfile
+                  ? "Así te ven tus cómplices cuando preparan algo para ti."
+                  : "Esto ayuda a no improvisar regalos, tallas o alimentos."}
+              </p>
+            </div>
+
             {hasSizes && (
               <Card className="space-y-3 p-4">
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-text-muted">Tallas</p>
@@ -165,7 +256,7 @@ export function ProfilePage() {
                   {profile.shirt_size && <span className="font-semibold text-text">Camisa: <span className="text-primary-strong">{profile.shirt_size}</span></span>}
                   {profile.shoe_size && <span className="font-semibold text-text">Zapato: <span className="text-primary-strong">{profile.shoe_size}</span></span>}
                   {profile.pants_size && <span className="font-semibold text-text">Pantalón: <span className="text-primary-strong">{profile.pants_size}</span></span>}
-                  {profile.clothing_styles?.length > 0 && <span className="font-semibold text-text">Estilo: <span className="text-primary-strong capitalize">{profile.clothing_styles.join(", ")}</span></span>}
+                  {profile.clothing_styles?.length > 0 && <span className="font-semibold text-text">Estilo: <span className="capitalize text-primary-strong">{profile.clothing_styles.join(", ")}</span></span>}
                 </div>
               </Card>
             )}
@@ -174,13 +265,22 @@ export function ProfilePage() {
               <Card className="space-y-3 p-4">
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-text-muted">Gustos e intereses</p>
                 {profile.favorite_colors?.length > 0 && (
-                  <div><p className="text-xs font-bold text-text-muted mb-1">Colores</p><ChipList items={profile.favorite_colors} /></div>
+                  <div>
+                    <p className="mb-1 text-xs font-bold text-text-muted">Colores</p>
+                    <ChipList items={profile.favorite_colors} />
+                  </div>
                 )}
                 {profile.favorite_brands?.length > 0 && (
-                  <div><p className="text-xs font-bold text-text-muted mb-1">Marcas</p><ChipList items={profile.favorite_brands} /></div>
+                  <div>
+                    <p className="mb-1 text-xs font-bold text-text-muted">Marcas</p>
+                    <ChipList items={profile.favorite_brands} />
+                  </div>
                 )}
                 {profile.hobbies?.length > 0 && (
-                  <div><p className="text-xs font-bold text-text-muted mb-1">Intereses</p><ChipList items={profile.hobbies} /></div>
+                  <div>
+                    <p className="mb-1 text-xs font-bold text-text-muted">Intereses</p>
+                    <ChipList items={profile.hobbies} />
+                  </div>
                 )}
               </Card>
             )}
@@ -198,39 +298,54 @@ export function ProfilePage() {
                 <ChipList items={profile.dislikes} color="danger" />
               </Card>
             )}
-          </div>
+          </section>
         )}
 
-        {/* Wishlist Section */}
-        <div className="px-1 space-y-4">
+        <section className="space-y-4 px-1">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-primary">
-              <span className="material-symbols-outlined font-variation-fill text-[1.25rem]">card_giftcard</span>
-              <h3 className="text-sm font-black uppercase tracking-[0.15em]">Lista de deseos</h3>
+              <span className="material-symbols-outlined text-[1.25rem]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                card_giftcard
+              </span>
+              <h3 className="text-sm font-black uppercase tracking-[0.15em]">Wishlist</h3>
             </div>
-            <span className="text-[10px] font-black text-text-muted/40 uppercase tracking-widest bg-surface px-2 py-0.5 rounded-full border border-border/50">
-              {wishlistQuery.data?.length || 0} ARTÍCULOS
+            <span className="rounded-full border border-border/50 bg-surface px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-text-muted/60">
+              {wishlistItems.length} artículos
             </span>
           </div>
-          {wishlistQuery.data?.length === 0 ? (
-            <div className="p-8 text-center rounded-[2.5rem] bg-surface/30 border border-dashed border-border">
-              <p className="text-sm text-text-muted italic">Aún no hay artículos en esta lista.</p>
-            </div>
+
+          {wishlistItems.length === 0 ? (
+            <Card className="rounded-[2.5rem] border-dashed p-8 text-center">
+              <p className="text-sm italic text-text-muted">Aún no hay artículos en esta lista.</p>
+            </Card>
           ) : (
             <div className="grid gap-3">
-              {wishlistQuery.data?.map(item => (
-                <Card key={item.id} className="p-4 space-y-3 bg-surface/50 border-none shadow-sm hover:ring-2 hover:ring-primary/20 transition-all">
+              {wishlistItems.map((item) => (
+                <Card key={item.id} className="space-y-3 border-none bg-surface/50 p-4 shadow-sm transition-all hover:ring-2 hover:ring-primary/20">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
-                      <p className="font-bold text-text truncate">{item.title}</p>
-                      {item.notes && <p className="text-xs text-text-muted italic mt-0.5 line-clamp-2 leading-relaxed">"{item.notes}"</p>}
+                      <p className="truncate font-bold text-text">{item.title}</p>
+                      {item.notes && (
+                        <p className="mt-0.5 line-clamp-2 text-xs italic leading-relaxed text-text-muted">
+                          "{item.notes}"
+                        </p>
+                      )}
                     </div>
+
                     {item.price_estimate && (
-                      <span className="text-xs font-black text-primary bg-primary/10 px-2 py-1 rounded-lg">${item.price_estimate}</span>
+                      <span className="rounded-lg bg-primary/10 px-2 py-1 text-xs font-black text-primary">
+                        {formatCurrency(item.price_estimate)}
+                      </span>
                     )}
                   </div>
+
                   {item.url && (
-                    <a href={item.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 w-fit px-3 py-1.5 bg-primary/12 text-primary rounded-xl text-[11px] font-black uppercase tracking-wider hover:bg-primary hover:text-slate-950 transition-all active:scale-95">
+                    <a
+                      href={item.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex w-fit items-center gap-2 rounded-xl bg-primary/12 px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-primary transition-all hover:bg-primary hover:text-slate-950 active:scale-95"
+                    >
                       <span className="material-symbols-outlined text-[1rem]">link</span>
                       Ver producto
                     </a>
@@ -239,30 +354,39 @@ export function ProfilePage() {
               ))}
             </div>
           )}
-        </div>
-
-        {/* Menu Items (Own Profile ONLY) */}
-        {isOwnProfile && (
-          <div className="space-y-3">
-            {ROW_ITEMS.map((item) => (
-              <Link key={item.key} to={item.href} className="flex items-center gap-4 rounded-[1.75rem] bg-surface px-5 py-4 shadow-sm border border-primary/5 hover:border-primary/20 transition-all active:scale-[0.98]">
-                <div className="flex size-11 flex-shrink-0 items-center justify-center rounded-2xl bg-primary/12">
-                  <span className="material-symbols-outlined text-[1.25rem] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>{item.icon}</span>
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-black text-text uppercase tracking-tight">{item.label}</p>
-                  <p className="text-xs font-bold text-text-muted/60">{getSublabel(item.key)}</p>
-                </div>
-                <span className="material-symbols-outlined text-[1.1rem] text-text-muted/40">chevron_right</span>
-              </Link>
-            ))}
-          </div>
-        )}
+        </section>
 
         {isOwnProfile && (
-          <Button variant="secondary" size="lg" className="w-full" onClick={() => signOutMutation.mutate()}>
-            {signOutMutation.isPending ? "Saliendo..." : "Cerrar sesión"}
-          </Button>
+          <section className="space-y-3">
+            <div className="px-1">
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-text-muted">Ajustes y finanzas</p>
+              <p className="text-sm text-text-muted">
+                Lo privado queda aquí, fuera del flujo principal de tu perfil compartido.
+              </p>
+            </div>
+
+            <Link
+              to="/perfil/metodos"
+              className="flex items-center gap-4 rounded-[1.75rem] border border-primary/5 bg-surface px-5 py-4 shadow-sm transition-all hover:border-primary/20 active:scale-[0.98]"
+            >
+              <div className="flex size-11 flex-shrink-0 items-center justify-center rounded-2xl bg-primary/12">
+                <span className="material-symbols-outlined text-[1.25rem] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>
+                  payments
+                </span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-black uppercase tracking-tight text-text">Métodos de reembolso</p>
+                <p className="text-xs font-bold text-text-muted/60">
+                  {paymentDestinations.length} configurado{paymentDestinations.length === 1 ? "" : "s"}
+                </p>
+              </div>
+              <span className="material-symbols-outlined text-[1.1rem] text-text-muted/40">chevron_right</span>
+            </Link>
+
+            <Button variant="secondary" size="lg" className="w-full" onClick={() => signOutMutation.mutate()}>
+              {signOutMutation.isPending ? "Saliendo..." : "Cerrar sesión"}
+            </Button>
+          </section>
         )}
       </div>
     </AppShell>

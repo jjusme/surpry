@@ -3,7 +3,7 @@ import { cn } from "../../utils/cn";
 
 const items = [
   { id: "inicio", label: "Inicio", to: "/inicio", icon: "home" },
-  { id: "banco", label: "Banco", to: "/cumpleanios", icon: "cake" },
+  { id: "cumpleanios", label: "Próximos", to: "/cumpleanios", icon: "cake" },
   { id: "grupos", label: "Grupos", to: "/grupos", icon: "groups" },
   { id: "eventos", label: "Eventos", to: "/eventos", icon: "celebration" },
   { id: "perfil", label: "Perfil", to: "/perfil", icon: "person" }
@@ -24,7 +24,7 @@ export function BottomNav({ activeTab }) {
               className={cn(
                 "flex min-w-0 flex-col items-center gap-0.5 rounded-2xl px-4 py-2 text-[11px] font-semibold transition-all duration-200",
                 isActive
-                  ? "bg-primary/12 text-primary scale-105"
+                  ? "scale-105 bg-primary/12 text-primary"
                   : "text-text-muted hover:text-text"
               )}
             >
@@ -37,7 +37,7 @@ export function BottomNav({ activeTab }) {
               >
                 {item.icon}
               </span>
-              <span className={cn("transition-all", isActive ? "font-bold" : "")}>
+              <span className={cn("transition-all", isActive && "font-bold")}>
                 {item.label}
               </span>
             </Link>
@@ -47,4 +47,3 @@ export function BottomNav({ activeTab }) {
     </nav>
   );
 }
-

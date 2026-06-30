@@ -5,6 +5,7 @@ const styles = {
   active: "bg-primary/15 text-primary-strong",
   completed: "bg-success/15 text-success",
   cancelled: "bg-danger/15 text-danger",
+  past_due: "border border-warning/20 bg-warning/15 text-warning",
   pending: "bg-warning/15 text-warning",
   reported_paid: "bg-primary/15 text-primary-strong",
   confirmed: "bg-success/15 text-success",
@@ -14,7 +15,7 @@ const styles = {
 const sizeStyles = {
   sm: "px-2 py-0.5 text-[10px]",
   md: "px-3 py-1 text-[11px]",
-  lg: "px-4 py-1.5 text-[12px]",
+  lg: "px-4 py-1.5 text-[12px]"
 };
 
 const translations = {
@@ -22,6 +23,7 @@ const translations = {
   active: "En marcha",
   completed: "Finalizado",
   cancelled: "Cancelado",
+  past_due: "Pendiente cierre",
   pending: "Pendiente",
   reported_paid: "En revisión",
   confirmed: "Confirmado",

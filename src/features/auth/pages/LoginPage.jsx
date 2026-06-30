@@ -2,13 +2,14 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "../../../components/ui/Button";
 import { Card } from "../../../components/ui/Card";
 import { FormField } from "../../../components/ui/FormField";
 import { Input } from "../../../components/ui/Input";
 import { signInWithGoogle, signInWithPassword } from "../api";
 import { useAuth } from "../AuthContext";
+import { getAbsoluteAppUrl, getPostAuthPath } from "../../../utils/pendingInvite";
 
 const schema = z.object({
   email: z.string().email("Ingresa un correo válido."),
@@ -16,6 +17,7 @@ const schema = z.object({
 });
 
 export function LoginPage() {
+  const location = useLocation();
   const navigate = useNavigate();
   const { isSupabaseConfigured } = useAuth();
   const [serverError, setServerError] = useState("");
@@ -30,11 +32,13 @@ export function LoginPage() {
     defaultValues: { email: "", password: "" }
   });
 
+  const redirectPath = getPostAuthPath(location.state?.from);
+
   const onSubmit = handleSubmit(async (values) => {
     setServerError("");
     try {
       await signInWithPassword(values);
-      navigate("/inicio", { replace: true });
+      navigate(redirectPath, { replace: true });
     } catch (error) {
       const msg = error.message || "";
       if (msg.includes("Invalid login credentials")) {
@@ -51,11 +55,7 @@ export function LoginPage() {
     setServerError("");
     setIsGoogleLoading(true);
     try {
-      const pendingToken = localStorage.getItem("pending_invite_token");
-      const redirectTo = pendingToken 
-        ? `${window.location.origin}/join/${pendingToken}`
-        : `${window.location.origin}/inicio`;
-      await signInWithGoogle(redirectTo);
+      await signInWithGoogle(getAbsoluteAppUrl(redirectPath));
     } catch (error) {
       setServerError(error.message);
       setIsGoogleLoading(false);
@@ -64,7 +64,6 @@ export function LoginPage() {
 
   return (
     <div className="space-y-8">
-      {/* Hero */}
       <div className="flex flex-col items-center gap-4 text-center">
         <div className="flex size-20 items-center justify-center rounded-[1.75rem] bg-primary/15 shadow-float">
           <span
@@ -87,7 +86,7 @@ export function LoginPage() {
       <Card className="space-y-5 p-5">
         {!isSupabaseConfigured ? (
           <p className="rounded-2xl bg-warning/10 px-4 py-3 text-sm font-medium text-warning">
-            Configura VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY en tu archivo .env.
+            Configura `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` en tu archivo `.env`.
           </p>
         ) : null}
 
@@ -113,8 +112,8 @@ export function LoginPage() {
               <button
                 type="button"
                 tabIndex={-1}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-primary transition-colors"
-                onClick={() => setShowPass((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted transition-colors hover:text-primary"
+                onClick={() => setShowPass((value) => !value)}
               >
                 <span className="material-symbols-outlined text-[1.25rem]">
                   {showPass ? "visibility_off" : "visibility"}
@@ -151,11 +150,11 @@ export function LoginPage() {
         <Button
           variant="secondary"
           size="lg"
-          className="w-full bg-surface hover:bg-surface-muted border border-border shadow-sm flex items-center justify-center gap-3 active:scale-[0.98] transition-all"
+          className="w-full border border-border bg-surface shadow-sm transition-all active:scale-[0.98]"
           onClick={handleGoogle}
           disabled={!isSupabaseConfigured || isGoogleLoading}
         >
-          <svg className="w-5 h-5" viewBox="0 0 24 24">
+          <svg className="h-5 w-5" viewBox="0 0 24 24">
             <path
               fill="#4285F4"
               d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"

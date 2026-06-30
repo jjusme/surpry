@@ -9,6 +9,7 @@ import { FormField } from "../../../components/ui/FormField";
 import { Input } from "../../../components/ui/Input";
 import { signInWithGoogle, signUpWithPassword } from "../api";
 import { useAuth } from "../AuthContext";
+import { getAbsoluteAppUrl, getPostAuthPath } from "../../../utils/pendingInvite";
 
 const schema = z.object({
   displayName: z.string().min(2, "Tu nombre debe tener al menos 2 caracteres."),
@@ -56,11 +57,7 @@ export function RegisterPage() {
     setServerError("");
     setIsGoogleLoading(true);
     try {
-      const pendingToken = localStorage.getItem("pending_invite_token");
-      const redirectTo = pendingToken 
-        ? `${window.location.origin}/join/${pendingToken}`
-        : `${window.location.origin}/inicio`;
-      await signInWithGoogle(redirectTo);
+      await signInWithGoogle(getAbsoluteAppUrl(getPostAuthPath()));
     } catch (error) {
       setServerError(error.message);
       setIsGoogleLoading(false);
@@ -80,15 +77,15 @@ export function RegisterPage() {
             <h1 className="text-3xl font-extrabold tracking-tight text-text">
               ¡Casi listo!
             </h1>
-            <p className="text-sm leading-6 text-text-muted px-4">
+            <p className="px-4 text-sm leading-6 text-text-muted">
               Hemos enviado un enlace de confirmación a tu correo. Por favor verifícalo para poder entrar a tu cuenta.
             </p>
           </div>
         </div>
-        <Card className="p-5 text-center space-y-4">
-          <p className="text-sm text-text-muted italic">¿Ya confirmaste?</p>
+        <Card className="space-y-4 p-5 text-center">
+          <p className="text-sm italic text-text-muted">¿Ya confirmaste?</p>
           <Button asChild size="pill" className="w-full">
-            <Link to="/login">Ir a Iniciar Sesión</Link>
+            <Link to="/login">Ir a iniciar sesión</Link>
           </Button>
         </Card>
       </div>
@@ -97,7 +94,6 @@ export function RegisterPage() {
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* Hero */}
       <div className="flex flex-col items-center gap-4 text-center">
         <div className="space-y-1">
           <p className="text-xs font-bold uppercase tracking-[0.24em] text-primary">
@@ -164,11 +160,11 @@ export function RegisterPage() {
         <Button
           variant="secondary"
           size="lg"
-          className="w-full bg-surface hover:bg-surface-muted border border-border shadow-sm flex items-center justify-center gap-3 active:scale-[0.98] transition-all"
+          className="flex w-full items-center justify-center gap-3 border border-border bg-surface shadow-sm transition-all active:scale-[0.98]"
           onClick={handleGoogle}
           disabled={!isSupabaseConfigured || isGoogleLoading}
         >
-          <svg className="w-5 h-5" viewBox="0 0 24 24">
+          <svg className="h-5 w-5" viewBox="0 0 24 24">
             <path
               fill="#4285F4"
               d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -192,9 +188,9 @@ export function RegisterPage() {
         </Button>
 
         <p className="text-center text-sm text-text-muted">
-          ¿Ya tienes cuenta? {" "}
+          ¿Ya tienes cuenta?{" "}
           <Link className="font-bold text-primary" to="/login">
-            Entrar
+            Inicia sesión
           </Link>
         </p>
       </Card>

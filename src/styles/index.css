@@ -42,8 +42,91 @@
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
+
   .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+}
+
+@layer utilities {
+  .animate-in {
+    animation-name: surpry-enter;
+    animation-duration: 300ms;
+    animation-fill-mode: both;
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .fade-in {
+    --surpry-enter-opacity: 0;
+  }
+
+  .zoom-in {
+    --surpry-enter-scale: 0.97;
+  }
+
+  .zoom-in-95 {
+    --surpry-enter-scale: 0.95;
+  }
+
+  .slide-in-from-bottom {
+    --surpry-enter-translate-y: 1rem;
+  }
+
+  .slide-in-from-bottom-2 {
+    --surpry-enter-translate-y: 0.5rem;
+  }
+
+  .slide-in-from-bottom-4 {
+    --surpry-enter-translate-y: 1rem;
+  }
+
+  .slide-in-from-bottom-8 {
+    --surpry-enter-translate-y: 2rem;
+  }
+
+  .slide-in-from-top-1 {
+    --surpry-enter-translate-y: -0.25rem;
+  }
+
+  .slide-in-from-top-2 {
+    --surpry-enter-translate-y: -0.5rem;
+  }
+
+  .slide-in-from-top-6 {
+    --surpry-enter-translate-y: -1.5rem;
+  }
+
+  .slide-in-from-right-4 {
+    --surpry-enter-translate-x: 1rem;
+  }
+
+  .duration-400 {
+    animation-duration: 400ms;
+    transition-duration: 400ms;
+  }
+}
+
+@keyframes surpry-enter {
+  from {
+    opacity: var(--surpry-enter-opacity, 1);
+    transform:
+      translate3d(
+        var(--surpry-enter-translate-x, 0),
+        var(--surpry-enter-translate-y, 0),
+        0
+      )
+      scale(var(--surpry-enter-scale, 1));
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-in {
+    animation: none;
   }
 }

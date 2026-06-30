@@ -57,7 +57,7 @@ export function WishlistPage() {
   });
 
   const {
-    register, handleSubmit, reset, watch,
+    register, handleSubmit, reset, setValue, watch,
     formState: { errors, isSubmitting }
   } = useForm({
     resolver: zodResolver(schema),
@@ -69,6 +69,7 @@ export function WishlistPage() {
   });
 
   const watchUrl = watch("url");
+  const selectedCategory = watch("category");
 
   useEffect(() => {
     if (editing) {
@@ -155,6 +156,7 @@ export function WishlistPage() {
 
               <form className="space-y-4" onSubmit={onSubmit}>
                 <input type="hidden" {...register("id")} />
+                <input type="hidden" {...register("category")} />
                 <FormField label="Título" error={errors.title?.message}>
                   <Input placeholder="Título del regalo..." {...register("title")} autoFocus />
                 </FormField>
@@ -190,9 +192,13 @@ export function WishlistPage() {
                   <div className="grid grid-cols-3 gap-2">
                     {CATEGORIES.map((cat) => (
                       <button key={cat.value} type="button"
-                        onClick={() => reset((prev) => ({ ...prev, category: prev.category === cat.value ? "" : cat.value }))}
+                        onClick={() => setValue(
+                          "category",
+                          selectedCategory === cat.value ? "" : cat.value,
+                          { shouldDirty: true, shouldTouch: true, shouldValidate: true }
+                        )}
                         className={cn("flex flex-col items-center gap-1 rounded-xl border p-2 text-xs font-bold transition-all",
-                          watch("category") === cat.value ? "bg-primary text-slate-950 border-primary" : "bg-bg-elevated text-text-muted border-border hover:border-primary/50"
+                          selectedCategory === cat.value ? "bg-primary text-slate-950 border-primary" : "bg-bg-elevated text-text-muted border-border hover:border-primary/50"
                         )}>
                         <span className="material-symbols-outlined text-[1.1rem]">{cat.icon}</span>
                         {cat.label}

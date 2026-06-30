@@ -10,6 +10,8 @@ import { EmptyState } from "../../../components/feedback/EmptyState";
 import { Button } from "../../../components/ui/Button";
 import { useAuth } from "../../auth/AuthContext";
 import { listEvents } from "../service";
+import { formatDate } from "../../../utils/format";
+import { getEventState } from "../../../utils/events";
 
 export function EventsListPage() {
   const navigate = useNavigate();
@@ -39,21 +41,21 @@ export function EventsListPage() {
   return (
     <AppShell
       activeTab="eventos"
-      header={
+      header={(
         <PageHeader
           title="Eventos"
-          subtitle="Operaciones activas"
-          action={
+          subtitle={`${listQuery.data.length} plan${listQuery.data.length === 1 ? "" : "es"} visibles`}
+          action={(
             <Button
               size="sm"
-              className="rounded-full px-4 h-9 font-black text-[10px] uppercase tracking-widest shadow-float"
+              className="h-9 rounded-full px-4 text-[10px] font-black uppercase tracking-widest shadow-float"
               onClick={() => navigate("/eventos/nuevo-convivio")}
             >
-              Nuevo Convivio
+              Nuevo convivio
             </Button>
-          }
+          )}
         />
-      }
+      )}
     >
       <div className="space-y-4 pt-4">
         {listQuery.data.length === 0 ? (
@@ -63,46 +65,64 @@ export function EventsListPage() {
             description="Crea uno manualmente desde un grupo o espera a que se generen automáticamente."
           />
         ) : (
-          listQuery.data.map((event) => (
-            <Link key={event.id} to={`/eventos/${event.id}`} className="block transform active:scale-[0.99] transition-all">
-              <Card className="p-3.5 rounded-2xl border-none shadow-sm hover:shadow-md transition-all bg-white flex items-center gap-3">
-                <div className="flex size-10 flex-shrink-0 items-center justify-center rounded-2xl bg-primary/10">
-                  <span
-                    className="material-symbols-outlined text-[1.25rem] text-primary"
-                    style={{ fontVariationSettings: "'FILL' 1" }}
-                  >
-                    {event.event_type === 'gathering' ? 'groups' : 'cake'}
-                  </span>
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h3 className="text-[15px] font-black text-text truncate leading-tight">
-                    {event.event_type === 'gathering'
-                      ? event.title || 'Convivio'
-                      : `Cumple de ${event.birthday_profile?.display_name?.split(" ")[0] || "Alguien"}`}
-                  </h3>
-                  <div className="flex items-center gap-2 mt-0.5 text-[10px] font-bold text-text-muted/60">
-                    <span className="truncate max-w-[120px]">{event.groups?.name || 'Privado'}</span>
-                    <span className="opacity-40">•</span>
-                    <span>{event.participants?.length || 0} {event.participants?.length === 1 ? 'Cómplice' : 'Cómplices'}</span>
-                    {event.birthday_date && (
-                      <>
-                        <span className="opacity-40">•</span>
-                        <span className="text-primary font-black">
-                          {new Date(event.birthday_date).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}
-                        </span>
-                      </>
-                    )}
-                  </div>
-                </div>
+          listQuery.data.map((event) => {
+            const eventState = getEventState(event);
+            const participantsCount = event.participants?.length || 0;
 
-                <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-                  <div className="whitespace-nowrap scale-[0.85] origin-right">
-                    <StatusBadge status={event.status} />
+            return (
+              <Link key={event.id} to={`/eventos/${event.id}`} className="block transition-all active:scale-[0.99]">
+                <Card className="space-y-4 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex size-12 flex-shrink-0 items-center justify-center rounded-[1.35rem] bg-primary/10">
+                      <span
+                        className="material-symbols-outlined text-[1.5rem] text-primary"
+                        style={{ fontVariationSettings: "'FILL' 1" }}
+                      >
+                        {event.event_type === "gathering" ? "groups" : "cake"}
+                      </span>
+                    </div>
+
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded-full bg-surface-muted px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.15em] text-text-muted">
+                          {eventState.typeLabel}
+                        </span>
+                        <StatusBadge status={eventState.displayStatus} size="sm">
+                          {eventState.badgeLabel}
+                        </StatusBadge>
+                      </div>
+
+                      <div className="space-y-1">
+                        <h3 className="truncate text-base font-black text-text">
+                          {event.event_type === "gathering"
+                            ? event.title || "Convivio"
+                            : `Cumple de ${event.birthday_profile?.display_name?.split(" ")[0] || "alguien"}`}
+                        </h3>
+                        <p className="text-sm text-text-muted">
+                          {eventState.listHint}
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </Card>
-            </Link>
-          ))
+
+                  <div className="flex flex-wrap gap-2">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-surface px-3 py-1 text-xs font-bold text-text-muted">
+                      <span className="material-symbols-outlined text-[1rem]">calendar_today</span>
+                      {formatDate(event.birthday_date, { day: "numeric", month: "short" })}
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-surface px-3 py-1 text-xs font-bold text-text-muted">
+                      <span className="material-symbols-outlined text-[1rem]">group</span>
+                      {participantsCount} {participantsCount === 1 ? "persona" : "personas"}
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-surface px-3 py-1 text-xs font-bold text-text-muted">
+                      <span className="material-symbols-outlined text-[1rem]">folder</span>
+                      {event.groups?.name || "Plan privado"}
+                    </span>
+                  </div>
+                </Card>
+              </Link>
+            );
+          })
         )}
       </div>
     </AppShell>

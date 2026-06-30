@@ -14,6 +14,7 @@ import { ErrorState } from "../../../components/feedback/ErrorState";
 import { EmptyState } from "../../../components/feedback/EmptyState";
 import { useAuth } from "../../auth/AuthContext";
 import { createGroup, listGroups } from "../service";
+import { daysUntilBirthday, getBirthdayCountdownLabel } from "../../../utils/format";
 
 const GROUP_COLORS = [
   "from-primary/20 to-primary/5",
@@ -33,6 +34,7 @@ export function GroupsListPage() {
     queryFn: () => listGroups(user.id),
     enabled: Boolean(user?.id && isSupabaseConfigured)
   });
+
   const createMutation = useMutation({
     mutationFn: (values) => createGroup(user.id, values),
     onSuccess: async () => {
@@ -42,7 +44,9 @@ export function GroupsListPage() {
       await queryClient.invalidateQueries({ queryKey: ["groups", user.id] });
     },
     onError: (error) => toast.error(
-      error.message.includes("row-level security policy") ? "Error de permisos. Corre el SQL 0003." : error.message
+      error.message.includes("row-level security policy")
+        ? "Error de permisos. Corre el SQL 0003."
+        : error.message
     )
   });
 
@@ -52,10 +56,13 @@ export function GroupsListPage() {
       toast.error("Ingresa un nombre para el grupo.");
       return;
     }
+
     await createMutation.mutateAsync({ name: name.trim() });
   };
 
-  if (listQuery.isLoading) return <LoadingState message="Cargando grupos..." fullScreen />;
+  if (listQuery.isLoading) {
+    return <LoadingState message="Cargando grupos..." fullScreen />;
+  }
 
   if (listQuery.error) {
     return (
@@ -72,107 +79,146 @@ export function GroupsListPage() {
   return (
     <AppShell
       activeTab="grupos"
-      header={<PageHeader title="Mis Grupos" />}
-      hideNav={showCreate} // Hide bottom nav when modal is open
+      header={(
+        <PageHeader
+          title="Mis grupos"
+          subtitle={`${listQuery.data.length} espacio${listQuery.data.length === 1 ? "" : "s"} activo${listQuery.data.length === 1 ? "" : "s"}`}
+          action={(
+            <Button
+              size="sm"
+              className="h-9 rounded-full px-4 text-[10px] font-black uppercase tracking-widest shadow-float"
+              onClick={() => setShowCreate(true)}
+            >
+              Crear
+            </Button>
+          )}
+        />
+      )}
+      hideNav={showCreate}
     >
       <div className="space-y-4 pt-4">
         {listQuery.data.length === 0 ? (
           <EmptyState
             icon="groups"
             title="Aún no tienes grupos"
-            description="Crea el primero y después invita a los demás por link."
+            description="Crea el primero y comparte un link para que todos entren rápido."
+            actionLabel="Crear grupo"
+            onAction={() => setShowCreate(true)}
           />
         ) : (
-          listQuery.data.map((group, i) => {
-            const members = group.members || [];
-            const nextBirthday = members
-              .filter((m) => m.profiles?.birthday_day && m.user_id !== user.id)
-              .map((m) => ({
-                ...m.profiles,
-                days: (() => {
-                  const today = new Date();
-                  const year = today.getFullYear();
-                  let next = new Date(year, m.profiles.birthday_month - 1, m.profiles.birthday_day);
-                  if (next < today) next = new Date(year + 1, m.profiles.birthday_month - 1, m.profiles.birthday_day);
-                  return Math.ceil((next - today) / (1000 * 60 * 60 * 24));
-                })()
-              }))
-              .sort((a, b) => a.days - b.days)[0];
+          <>
+            {listQuery.data.map((group, index) => {
+              const members = group.members || [];
+              const nextBirthday = members
+                .filter((member) => member.profiles?.birthday_day && member.user_id !== user.id)
+                .map((member) => ({
+                  ...member.profiles,
+                  days: daysUntilBirthday(member.profiles.birthday_day, member.profiles.birthday_month)
+                }))
+                .filter((member) => member.days !== null)
+                .sort((a, b) => a.days - b.days)[0];
 
-            return (
-              <Link key={group.id} to={`/grupos/${group.id}`} className="block">
-                <Card className="overflow-hidden p-0">
-                  {/* Color banner */}
-                  <div
-                    className={`h-24 w-full bg-gradient-to-br ${GROUP_COLORS[i % GROUP_COLORS.length]} flex items-center justify-center`}
-                  >
-                    <span
-                      className="material-symbols-outlined text-[3rem] text-primary/40"
-                      style={{ fontVariationSettings: "'FILL' 1" }}
-                    >
-                      groups
-                    </span>
-                  </div>
-                  <div className="space-y-3 p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-lg font-bold text-text">{group.name}</p>
-                        <p className="text-sm text-text-muted">
-                          {members.length} cómplice{members.length !== 1 ? "s" : ""}
-                        </p>
-                      </div>
-                      <AvatarStack
-                        users={members.map(m => ({ name: m.profiles?.display_name, avatar_url: m.profiles?.avatar_url }))}
-                        max={4}
-                      />
-                    </div>
-
-                    {nextBirthday && (
-                      <div className="flex items-center gap-2 rounded-2xl bg-surface-muted px-3 py-2">
+              return (
+                <Link key={group.id} to={`/grupos/${group.id}`} className="block">
+                  <Card className="space-y-4 p-4 transition-all active:scale-[0.99]">
+                    <div className="flex items-start gap-3">
+                      <div className={`flex size-12 flex-shrink-0 items-center justify-center rounded-[1.35rem] bg-gradient-to-br ${GROUP_COLORS[index % GROUP_COLORS.length]}`}>
                         <span
-                          className="material-symbols-outlined text-[1rem] text-primary"
+                          className="material-symbols-outlined text-[1.6rem] text-primary"
                           style={{ fontVariationSettings: "'FILL' 1" }}
                         >
-                          cake
+                          groups
                         </span>
-                        <p className="text-xs font-semibold text-text-muted">
-                          <span className="text-text">Próximo cumpleaños:</span>{" "}
-                          {nextBirthday.display_name?.split(" ")[0]} en {nextBirthday.days}d
-                        </p>
-                        <Link
-                          to={`/grupos/${group.id}`}
-                          className="ml-auto text-xs font-bold text-primary"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          Sorprender
-                        </Link>
                       </div>
-                    )}
-                  </div>
-                </Card>
-              </Link>
-            );
-          })
+
+                      <div className="min-w-0 flex-1 space-y-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-base font-black text-text">
+                              {group.name}
+                            </p>
+                            <p className="text-xs font-bold uppercase tracking-[0.15em] text-text-muted">
+                              {members.length} cómplice{members.length === 1 ? "" : "s"}
+                            </p>
+                          </div>
+
+                          <AvatarStack
+                            users={members.map((member) => ({
+                              name: member.profiles?.display_name,
+                              avatar_url: member.profiles?.avatar_url
+                            }))}
+                            max={4}
+                          />
+                        </div>
+
+                        {nextBirthday ? (
+                          <div className="flex items-center justify-between gap-3 rounded-2xl bg-surface-muted/70 px-3 py-2">
+                            <div className="min-w-0">
+                              <p className="text-[10px] font-black uppercase tracking-[0.15em] text-text-muted">
+                                Próximo cumpleaños
+                              </p>
+                              <p className="truncate text-sm font-bold text-text">
+                                {nextBirthday.display_name?.split(" ")[0]}
+                              </p>
+                            </div>
+                            <span className="rounded-full bg-primary/12 px-3 py-1 text-[10px] font-black uppercase tracking-[0.15em] text-primary-strong">
+                              {getBirthdayCountdownLabel(nextBirthday.days)}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="rounded-2xl border border-dashed border-border px-3 py-2">
+                            <p className="text-sm text-text-muted">
+                              Aún no hay cumpleaños visibles en este grupo.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between border-t border-border/60 pt-3">
+                      <span className="text-xs font-bold text-text-muted">
+                        Entra para ver eventos, intercambios e invitaciones
+                      </span>
+                      <span className="inline-flex items-center gap-1 text-xs font-black uppercase tracking-[0.15em] text-primary">
+                        Ver grupo
+                        <span className="material-symbols-outlined text-[1rem]">chevron_right</span>
+                      </span>
+                    </div>
+                  </Card>
+                </Link>
+              );
+            })}
+
+            <Button
+              variant="secondary"
+              size="pill"
+              className="mt-2 w-full"
+              onClick={() => setShowCreate(true)}
+            >
+              Crear otro grupo
+            </Button>
+          </>
         )}
       </div>
 
-      {/* Create group modal overlay */}
       {showCreate && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="w-full max-w-[28rem] rounded-[2rem] bg-bg p-6 shadow-2xl animate-in zoom-in-95 duration-300">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-xl font-bold text-text">Crear grupo</h2>
               <button
                 type="button"
-                onClick={() => { setShowCreate(false); }}
-                className="flex size-10 items-center justify-center rounded-full bg-surface-muted text-text-muted hover:text-text transition-colors"
+                onClick={() => setShowCreate(false)}
+                className="flex size-10 items-center justify-center rounded-full bg-surface-muted text-text-muted transition-colors hover:text-text"
               >
                 <span className="material-symbols-outlined text-[1.25rem]">close</span>
               </button>
             </div>
+
             <p className="mb-6 text-sm leading-relaxed text-text-muted">
-              Crea un grupo para familia, amigos o trabajo y comparte un link de invitación para empezar a planear.
+              Crea un grupo para familia, amigos o trabajo y comparte un link para empezar a planear.
             </p>
+
             <form className="space-y-6" onSubmit={handleCreate}>
               <FormField label="Nombre del grupo">
                 <Input
@@ -180,7 +226,7 @@ export function GroupsListPage() {
                   value={name}
                   autoFocus
                   className="h-14 text-base"
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(event) => setName(event.target.value)}
                 />
               </FormField>
 
@@ -196,16 +242,6 @@ export function GroupsListPage() {
           </div>
         </div>
       )}
-
-      {/* FAB */}
-      <button
-        type="button"
-        onClick={() => setShowCreate(true)}
-        className="fixed bottom-24 right-4 z-40 flex size-14 items-center justify-center rounded-full bg-primary shadow-float transition-transform active:scale-95"
-        style={{ right: "calc(50% - 15rem + 1rem)" }}
-      >
-        <span className="material-symbols-outlined text-[1.5rem] text-slate-950">add</span>
-      </button>
     </AppShell>
   );
 }

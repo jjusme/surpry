@@ -24,6 +24,7 @@ import {
   addGiftOption,
   createExpenseWithShares,
   getEventDetail,
+  getGiftVotesBatch,
   reviewShare,
   updateGiftStatus,
   syncEventWishlist,
@@ -31,7 +32,6 @@ import {
   deleteEvent,
   voteGift,
   unvoteGift,
-  getGiftVotes,
   listEventTasks,
   createEventTask,
   toggleEventTask,
@@ -44,6 +44,7 @@ import { listPaymentDestinations, getProfileById } from "../../profile/service";
 import { EVENT_TABS, EXPENSE_CATEGORIES } from "../../../lib/constants";
 import { formatCurrency, formatDate } from "../../../utils/format";
 import { cn } from "../../../utils/cn";
+import { getEventState } from "../../../utils/events";
 import {
   suggestGifts as suggestGiftsApi,
   getActivitySummary as getActivitySummaryApi,
@@ -90,6 +91,14 @@ export function EventDetailPage() {
   const expenses = detailQuery.data?.expenses || [];
   const activity = detailQuery.data?.activity || [];
   const event = detailQuery.data?.event;
+  const eventState = getEventState(event);
+  const giftIdsKey = gifts.map((gift) => gift.id).join(",");
+
+  const giftVotesQuery = useQuery({
+    queryKey: ["gift-votes", eventId, giftIdsKey],
+    queryFn: () => getGiftVotesBatch(gifts.map((gift) => gift.id)),
+    enabled: Boolean(eventId && gifts.length > 0)
+  });
 
   useEffect(() => {
     if (!eventId || !isSupabaseConfigured) return;
@@ -201,29 +210,16 @@ export function EventDetailPage() {
   });
 
   // --- Gift Voting ---
-  const [giftVotes, setGiftVotes] = useState({});
   const [newTaskTitle, setNewTaskTitle] = useState("");
-
-  useEffect(() => {
-    if (!giftsData?.length) return;
-    giftsData.forEach(async (gift) => {
-      try {
-        const votes = await getGiftVotes(gift.id);
-        setGiftVotes((prev) => ({ ...prev, [gift.id]: votes }));
-      } catch {}
-    });
-  }, [giftsData]);
+  const giftVotes = giftVotesQuery.data || {};
 
   const voteMutation = useMutation({
     mutationFn: ({ giftId, hasVoted }) => hasVoted ? unvoteGift(giftId) : voteGift(giftId),
     onSuccess: async () => {
-      queryClient.invalidateQueries({ queryKey: ["event-detail", eventId] });
-      gifts.forEach(async (gift) => {
-        try {
-          const votes = await getGiftVotes(gift.id);
-          setGiftVotes((prev) => ({ ...prev, [gift.id]: votes }));
-        } catch {}
-      });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["event-detail", eventId] }),
+        queryClient.invalidateQueries({ queryKey: ["gift-votes", eventId] })
+      ]);
     },
     onError: (error) => toast.error(error.message)
   });
@@ -484,7 +480,7 @@ export function EventDetailPage() {
               {event?.event_type === 'gathering' ? event?.title : event?.birthday_profile?.display_name}
             </h2>
             <p className="text-sm font-medium italic text-text-muted">
-              {event?.event_type === 'gathering' ? "¡Momento de organizar!" : "¡Shhh! Es un plan secreto."}
+              {eventState.heroMessage}
             </p>
             <div className="inline-flex items-center gap-1.5 rounded-full bg-surface-muted px-4 py-1.5 border border-border/50">
               <span
@@ -505,8 +501,8 @@ export function EventDetailPage() {
             <div className="w-full pt-2">
               <CountdownTimer
                 targetDate={event.birthday_date}
-                todayLabel={event?.event_type === 'gathering' ? '¡Es hoy! 🎉' : '¡Hoy es su cumpleaños! 🎉'}
-                passedLabel={event?.event_type === 'gathering' ? 'Ya fue el convivio 🎉' : 'El cumpleaños ya pasó 🎉'}
+                todayLabel={eventState.todayLabel}
+                passedLabel={eventState.passedLabel}
               />
             </div>
           )}
@@ -542,9 +538,11 @@ export function EventDetailPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-[8px] font-black uppercase tracking-[0.2em] text-text-muted mb-1">
-                    {event?.event_type === 'gathering' ? 'Estado del convivio' : 'Estado del plan'}
+                    {eventState.statusHeading}
                   </p>
-                  <StatusBadge status={event?.status} />
+                  <StatusBadge status={eventState.displayStatus}>
+                    {eventState.badgeLabel}
+                  </StatusBadge>
                 </div>
                 <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10">
                   <span
@@ -564,7 +562,11 @@ export function EventDetailPage() {
                 />
               )}
 
-              {event?.status === 'active' && event?.organizer_id === user?.id && (
+              <p className="text-sm leading-relaxed text-text-muted">
+                {eventState.statusNote}
+              </p>
+
+              {eventState.canComplete && event?.organizer_id === user?.id && (
                 <Button variant="primary" size="lg" className="w-full" onClick={() => completeEventMutation.mutate()} disabled={completeEventMutation.isPending}>
                   {completeEventMutation.isPending ? "Completando..." : "Marcar como completado"}
                 </Button>

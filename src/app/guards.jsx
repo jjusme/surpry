@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { LoadingState } from "../components/feedback/LoadingState";
 import { useAuth } from "../features/auth/AuthContext";
 import { isSupabaseConfigured, supabase } from "../lib/supabase";
+import { getPendingInviteToken } from "../utils/pendingInvite";
 
 export function ProtectedRoute() {
   const location = useLocation();
@@ -11,12 +12,16 @@ export function ProtectedRoute() {
   const profileQuery = useQuery({
     queryKey: ["profile-setup-check", session?.user?.id],
     queryFn: async () => {
-      if (!session?.user?.id || !isSupabaseConfigured) return null;
+      if (!session?.user?.id || !isSupabaseConfigured) {
+        return null;
+      }
+
       const { data } = await supabase
         .from("profiles")
         .select("has_completed_setup, birthday_day, birthday_month")
         .eq("id", session.user.id)
         .maybeSingle();
+
       return data;
     },
     enabled: Boolean(session?.user?.id && isSupabaseConfigured),
@@ -24,7 +29,7 @@ export function ProtectedRoute() {
   });
 
   if (authLoading) {
-    return <LoadingState message="Preparando tu sesion..." fullScreen />;
+    return <LoadingState message="Preparando tu sesión..." fullScreen />;
   }
 
   if (!session) {
@@ -42,22 +47,7 @@ export function ProtectedRoute() {
     return <Navigate to="/setup" replace />;
   }
 
-  const pendingInviteRaw = localStorage.getItem("pending_invite_token");
-  let pendingInvite = null;
-  if (pendingInviteRaw) {
-    try {
-      const parsed = JSON.parse(pendingInviteRaw);
-      const age = Date.now() - parsed.ts;
-      if (age < 24 * 60 * 60 * 1000) {
-        pendingInvite = parsed.token;
-      } else {
-        localStorage.removeItem("pending_invite_token");
-      }
-    } catch {
-      pendingInvite = pendingInviteRaw;
-      localStorage.removeItem("pending_invite_token");
-    }
-  }
+  const pendingInvite = getPendingInviteToken();
   if (pendingInvite && location.pathname === "/inicio") {
     return <Navigate to={`/join/${pendingInvite}`} replace />;
   }

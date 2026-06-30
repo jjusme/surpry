@@ -375,6 +375,37 @@ export async function getGiftVotes(giftOptionId) {
   return data ?? [];
 }
 
+export async function getGiftVotesBatch(giftOptionIds) {
+  if (!giftOptionIds?.length) {
+    return {};
+  }
+
+  const supabase = requireSupabase();
+  const { data, error } = await supabase
+    .from("gift_votes")
+    .select("gift_option_id, user_id, profiles:user_id(display_name, avatar_url)")
+    .in("gift_option_id", giftOptionIds);
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).reduce((acc, row) => {
+    if (!acc[row.gift_option_id]) {
+      acc[row.gift_option_id] = [];
+    }
+
+    acc[row.gift_option_id].push({
+      gift_option_id: row.gift_option_id,
+      user_id: row.user_id,
+      display_name: row.profiles?.display_name || "",
+      avatar_url: row.profiles?.avatar_url || null
+    });
+
+    return acc;
+  }, {});
+}
+
 // --- Event Tasks ---
 
 export async function listEventTasks(eventId) {
