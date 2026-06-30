@@ -12,8 +12,8 @@ export default defineConfig({
         name: 'Surpry',
         short_name: 'Surpry',
         description: 'Organiza Regalos Sorpresa en Grupo',
-        theme_color: '#0df2f2',
-        background_color: '#0b1218',
+        theme_color: '#8B5CF6',
+        background_color: '#FAFAFE',
         display: 'standalone',
         icons: [
           {
