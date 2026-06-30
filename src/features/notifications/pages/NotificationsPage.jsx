@@ -72,7 +72,9 @@ export function NotificationsPage() {
 
         const payload = notification.payload || {};
         
-        if (payload.event_id) {
+        if (payload.exchange_id) {
+            navigate(`/intercambios/${payload.exchange_id}`);
+        } else if (payload.event_id) {
             navigate(`/eventos/${payload.event_id}`);
         } else if (payload.group_id) {
             navigate(`/grupos/${payload.group_id}`);
@@ -160,6 +162,8 @@ export function NotificationsPage() {
                                         return { icon: 'cake', title: '¡Feliz cumpleaños!' };
                                     case 'recordatorio_cumpleanos':
                                         return { icon: 'alarm', title: 'Recordatorio especial' };
+                                    case 'intercambio_sorteado':
+                                        return { icon: 'redeem', title: '¡Sorteo listo!' };
                                     default:
                                         return { icon: 'notifications', title: 'Notificación' };
                                 }

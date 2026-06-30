@@ -31,6 +31,7 @@ const ProfileSetupPage = lazyPage(() => import("../features/profile/pages/Profil
 const PaymentMethodsPage = lazyPage(() => import("../features/profile/pages/PaymentMethodsPage"), "PaymentMethodsPage");
 const ProfilePage = lazyPage(() => import("../features/profile/pages/ProfilePage"), "ProfilePage");
 const ShareDetailPage = lazyPage(() => import("../features/reimbursements/pages/ShareDetailPage"), "ShareDetailPage");
+const ExchangeDetailPage = lazyPage(() => import("../features/exchanges/pages/ExchangeDetailPage"), "ExchangeDetailPage");
 const WishlistPage = lazyPage(() => import("../features/wishlist/pages/WishlistPage"), "WishlistPage");
 const NotificationsPage = lazyPage(() => import("../features/notifications/pages/NotificationsPage"), "NotificationsPage");
 
@@ -73,7 +74,8 @@ export const router = createBrowserRouter([
       { path: "/perfil", element: withSuspense(<ProfilePage />) },
       { path: "/perfil/:userId", element: withSuspense(<ProfilePage />) },
       { path: "/perfil/metodos", element: withSuspense(<PaymentMethodsPage />) },
-      { path: "/shares/:shareId", element: withSuspense(<ShareDetailPage />) }
+      { path: "/shares/:shareId", element: withSuspense(<ShareDetailPage />) },
+      { path: "/intercambios/:exchangeId", element: withSuspense(<ExchangeDetailPage />) }
     ]
   },
   {

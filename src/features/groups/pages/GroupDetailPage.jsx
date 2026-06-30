@@ -7,12 +7,15 @@ import { PageHeader } from "../../../components/layout/PageHeader";
 import { Card } from "../../../components/ui/Card";
 import { Button } from "../../../components/ui/Button";
 import { Select } from "../../../components/ui/Select";
+import { Input } from "../../../components/ui/Input";
+import { FormField } from "../../../components/ui/FormField";
 import { Avatar } from "../../../components/ui/Avatar";
 import { LoadingState } from "../../../components/feedback/LoadingState";
 import { ErrorState } from "../../../components/feedback/ErrorState";
 import { ConfirmDialog } from "../../../components/ui/ConfirmDialog";
 import { useAuth } from "../../auth/AuthContext";
 import { createEvent } from "../../events/service";
+import { listGroupExchanges, createExchange } from "../../exchanges/service";
 import { createGroupInvite, getGroupDetail, deleteGroup } from "../service";
 import { formatBirthday, formatDate } from "../../../utils/format";
 import { cn } from "../../../utils/cn";
@@ -26,11 +29,31 @@ export function GroupDetailPage() {
   const [inviteUrl, setInviteUrl] = useState("");
   const [copySuccess, setCopySuccess] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [showExchangeForm, setShowExchangeForm] = useState(false);
+  const [exchangeForm, setExchangeForm] = useState({ name: "", budget: "", exchange_date: "" });
 
   const detailQuery = useQuery({
     queryKey: ["group-detail", groupId],
     queryFn: () => getGroupDetail(groupId),
     enabled: Boolean(groupId && isSupabaseConfigured)
+  });
+
+  const exchangesQuery = useQuery({
+    queryKey: ["group-exchanges", groupId],
+    queryFn: () => listGroupExchanges(groupId),
+    enabled: Boolean(groupId && isSupabaseConfigured)
+  });
+
+  const createExchangeMutation = useMutation({
+    mutationFn: () => createExchange({ ...exchangeForm, group_id: groupId }),
+    onSuccess: (id) => {
+      setExchangeForm({ name: "", budget: "", exchange_date: "" });
+      setShowExchangeForm(false);
+      queryClient.invalidateQueries({ queryKey: ["group-exchanges", groupId] });
+      toast.success("Intercambio creado");
+      navigate(`/intercambios/${id}`);
+    },
+    onError: (error) => toast.error(error.message)
   });
 
   const inviteMutation = useMutation({
@@ -260,6 +283,92 @@ export function GroupDetailPage() {
                   </div>
                 </Link>
               ))
+            )}
+          </div>
+        </div>
+
+        {/* Intercambios */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <h2 className="text-lg font-black tracking-tight text-text">Intercambios</h2>
+              <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-primary">🎁 amigo secreto</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowExchangeForm((v) => !v)}
+              className="text-xs font-bold text-primary hover:text-primary-strong"
+            >
+              {showExchangeForm ? "Cancelar" : "Crear"}
+            </button>
+          </div>
+
+          {showExchangeForm && (
+            <Card className="space-y-3 p-4 border-l-4 border-primary">
+              <FormField label="Nombre del intercambio">
+                <Input
+                  placeholder="Ej. Intercambio Navideño 2026"
+                  value={exchangeForm.name}
+                  onChange={(e) => setExchangeForm((c) => ({ ...c, name: e.target.value }))}
+                />
+              </FormField>
+              <div className="grid grid-cols-2 gap-3">
+                <FormField label="Presupuesto">
+                  <Input
+                    type="number"
+                    placeholder="500"
+                    value={exchangeForm.budget}
+                    onChange={(e) => setExchangeForm((c) => ({ ...c, budget: e.target.value }))}
+                  />
+                </FormField>
+                <FormField label="Fecha">
+                  <Input
+                    type="date"
+                    value={exchangeForm.exchange_date}
+                    onChange={(e) => setExchangeForm((c) => ({ ...c, exchange_date: e.target.value }))}
+                  />
+                </FormField>
+              </div>
+              <Button
+                size="pill"
+                className="w-full"
+                onClick={() => {
+                  if (!exchangeForm.name.trim()) return toast.error("Ponle un nombre");
+                  createExchangeMutation.mutate();
+                }}
+                disabled={createExchangeMutation.isPending}
+              >
+                {createExchangeMutation.isPending ? "Creando..." : "Crear intercambio"}
+              </Button>
+            </Card>
+          )}
+
+          <div className="space-y-3">
+            {exchangesQuery.data?.length ? (
+              exchangesQuery.data.map((ex) => (
+                <Link key={ex.id} to={`/intercambios/${ex.id}`} className="block group">
+                  <div className="flex items-center gap-4 rounded-[1.5rem] bg-surface p-4 shadow-sm border border-transparent transition-all hover:border-primary/20 active:scale-[0.98]">
+                    <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                      <span className="material-symbols-outlined text-[1.4rem] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>redeem</span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-lg font-black text-text truncate">{ex.name}</p>
+                      <p className="text-xs font-bold text-text-muted">
+                        {ex.participant_count} participante{ex.participant_count !== 1 ? "s" : ""}
+                        {ex.status === "drawn" ? " · Sorteado" : ex.status === "closed" ? " · Cerrado" : " · Abierto"}
+                      </p>
+                    </div>
+                    <span className="material-symbols-outlined text-text-muted/40 font-light">chevron_right</span>
+                  </div>
+                </Link>
+              ))
+            ) : (
+              !showExchangeForm && (
+                <div className="rounded-[1.5rem] bg-surface-muted/50 border border-dashed border-border p-6 text-center space-y-1">
+                  <span className="material-symbols-outlined text-text-muted/30 text-3xl">redeem</span>
+                  <p className="text-sm text-text-muted font-medium">Sin intercambios todavía. ¡Crea uno para Navidad!</p>
+                </div>
+              )
             )}
           </div>
         </div>
