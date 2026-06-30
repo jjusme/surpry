@@ -36,6 +36,7 @@ import {
   createEventTask,
   toggleEventTask,
   deleteEventTask,
+  assignEventTask,
   completeEvent,
   updateRsvp
 } from "../service";
@@ -45,8 +46,8 @@ import { formatCurrency, formatDate } from "../../../utils/format";
 import { cn } from "../../../utils/cn";
 import {
   suggestGifts as suggestGiftsApi,
-  parseExpense as parseExpenseApi,
-  getActivitySummary as getActivitySummaryApi
+  getActivitySummary as getActivitySummaryApi,
+  assignTasksWithAI
 } from "../../ai/service";
 import { AiSuggestionCard } from "../../../components/ui/AiSuggestionCard";
 
@@ -258,6 +259,47 @@ export function EventDetailPage() {
     }
   });
 
+  const assignTaskMutation = useMutation({
+    mutationFn: ({ taskId, userId }) => assignEventTask(taskId, userId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["event-tasks", eventId] });
+    },
+    onError: (error) => toast.error(error.message)
+  });
+
+  const aiAssignMutation = useMutation({
+    mutationFn: async () => {
+      const realParticipants = participants.filter((p) => !p.is_virtual && p.user_id);
+      const pending = (tasksQuery.data || []).filter((t) => !t.assigned_to);
+      if (pending.length === 0) throw new Error("No hay tareas sin encargado");
+      if (realParticipants.length === 0) throw new Error("No hay participantes con cuenta para asignar");
+
+      const { assignments } = await assignTasksWithAI(
+        pending.map((t) => ({ id: t.id, title: t.title })),
+        realParticipants.map((p) => ({ name: p.profiles?.display_name || "" }))
+      );
+
+      const nameToUser = new Map(
+        realParticipants.map((p) => [(p.profiles?.display_name || "").toLowerCase(), p.user_id])
+      );
+      const validTaskIds = new Set(pending.map((t) => t.id));
+
+      const ops = (assignments || [])
+        .map((a) => {
+          const userId = nameToUser.get((a.assignee || "").toLowerCase());
+          return userId && validTaskIds.has(a.task_id) ? assignEventTask(a.task_id, userId) : null;
+        })
+        .filter(Boolean);
+      await Promise.all(ops);
+      return ops.length;
+    },
+    onSuccess: async (count) => {
+      toast.success(count > 0 ? `La IA asignó ${count} tarea(s)` : "La IA no pudo asignar tareas");
+      await queryClient.invalidateQueries({ queryKey: ["event-tasks", eventId] });
+    },
+    onError: (error) => toast.error(error.message)
+  });
+
   // --- Complete Event ---
   const completeEventMutation = useMutation({
     mutationFn: () => completeEvent(eventId),
@@ -318,40 +360,6 @@ export function EventDetailPage() {
       eventStatus: event?.status
     }),
     onSuccess: (data) => setAiSummary(data.summary || ""),
-    onError: (error) => toast.error(error.message)
-  });
-
-  // --- AI Expense Parsing (pestaña Gastos) ---
-  const [expenseText, setExpenseText] = useState("");
-  const parseExpenseMutation = useMutation({
-    mutationFn: () => parseExpenseApi(
-      expenseText,
-      participants.map((p) => ({
-        name: p.is_virtual ? p.display_name : p.profiles?.display_name
-      }))
-    ),
-    onSuccess: (data) => {
-      setExpenseForm((c) => ({
-        ...c,
-        title: data.title || c.title,
-        amount: data.amount != null ? String(data.amount) : c.amount,
-        category: data.category || c.category
-      }));
-      setSplitType(data.split_equally ? "equal" : "manual");
-
-      const mentioned = (data.participants_mentioned || []).map((n) => n.toLowerCase());
-      const matchedIds = mentioned.length
-        ? participants
-            .filter((p) => {
-              const name = (p.is_virtual ? p.display_name : p.profiles?.display_name) || "";
-              return mentioned.some((m) => name.toLowerCase().includes(m) || m.includes(name.toLowerCase()));
-            })
-            .map((p) => p.id)
-        : participants.map((p) => p.id);
-      if (matchedIds.length) setSelectedParticipants(matchedIds);
-
-      toast.success("Gasto pre-llenado. Revisa los datos antes de guardar.");
-    },
     onError: (error) => toast.error(error.message)
   });
 
@@ -883,28 +891,6 @@ export function EventDetailPage() {
                   ¿Pagaste algo? Regístralo aquí para que los demás te paguen su parte.
                 </p>
               </div>
-              <div className="rounded-2xl border border-primary/20 bg-primary/5 p-3 space-y-2">
-                <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[1rem] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Captura rápida con IA</p>
-                </div>
-                <TextArea
-                  rows={2}
-                  placeholder="Ej. Pagué el pastel, 500 pesos, a la mitad con Ana y Luis"
-                  value={expenseText}
-                  onChange={(e) => setExpenseText(e.target.value)}
-                />
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  className="w-full"
-                  onClick={() => parseExpenseMutation.mutate()}
-                  disabled={parseExpenseMutation.isPending || !expenseText.trim()}
-                >
-                  {parseExpenseMutation.isPending ? "Analizando..." : "Analizar con IA"}
-                </Button>
-              </div>
               <form className="space-y-4" onSubmit={submitExpense}>
                 <FormField label="¿Qué se compró?">
                   <Input
@@ -1230,10 +1216,26 @@ export function EventDetailPage() {
         )}
 
         {/* TAREAS */}
-        {activeTab === "tareas" && (
+        {activeTab === "tareas" && (() => {
+          const realParticipants = participants.filter((p) => !p.is_virtual && p.user_id);
+          const pendingCount = (tasksQuery?.data || []).filter((t) => !t.assigned_to).length;
+          return (
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-400">
             <Card className="space-y-4 p-5 shadow-sm">
-              <h3 className="text-lg font-black text-text tracking-tight">Checklist de tareas</h3>
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-lg font-black text-text tracking-tight">Tareas y encargados</h3>
+                {tasksQuery?.data?.length > 0 && realParticipants.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => aiAssignMutation.mutate()}
+                    disabled={aiAssignMutation.isPending || pendingCount === 0}
+                    className="flex flex-shrink-0 items-center gap-1 text-xs font-bold text-primary hover:text-primary-strong disabled:opacity-40"
+                  >
+                    <span className="material-symbols-outlined text-[1rem]" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
+                    {aiAssignMutation.isPending ? "Asignando..." : "Autoasignar con IA"}
+                  </button>
+                )}
+              </div>
               <div className="flex gap-2">
                 <Input
                   placeholder="Ej. Comprar pastel..."
@@ -1292,9 +1294,19 @@ export function EventDetailPage() {
                       <span className={cn("flex-1 text-sm font-semibold", task.is_completed && "line-through text-text-muted")}>
                         {task.title}
                       </span>
-                      {task.profiles?.display_name && (
-                        <span className="text-[10px] font-bold text-text-muted/60 uppercase">{task.profiles.display_name.split(" ")[0]}</span>
-                      )}
+                      <select
+                        value={task.assigned_to || ""}
+                        onChange={(e) => assignTaskMutation.mutate({ taskId: task.id, userId: e.target.value || null })}
+                        className="max-w-[6.5rem] flex-shrink-0 truncate rounded-full border border-border/50 bg-surface-muted px-2 py-1 text-[10px] font-bold text-text-muted focus:border-primary focus:outline-none"
+                        title="Encargado"
+                      >
+                        <option value="">Sin encargado</option>
+                        {realParticipants.map((p) => (
+                          <option key={p.user_id} value={p.user_id}>
+                            {(p.profiles?.display_name || "").split(" ")[0]}
+                          </option>
+                        ))}
+                      </select>
                       <button type="button" onClick={() => deleteTaskMutation.mutate(task.id)} className="text-text-muted/30 hover:text-danger transition-colors">
                         <span className="material-symbols-outlined text-[1rem]">close</span>
                       </button>
@@ -1312,7 +1324,8 @@ export function EventDetailPage() {
               )}
             </Card>
           </div>
-        )}
+          );
+        })()}
 
       </div>
     </AppShell>

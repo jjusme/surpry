@@ -61,7 +61,7 @@ Sugiere 3-5 ideas de regalo. Para cada una:
 Solo incluye regalo que estén dentro del presupuesto.`;
 
     const { object } = await generateObject({
-      model: groq("llama-3.3-70b-versatile"),
+      model: groq("openai/gpt-oss-20b"),
       prompt,
       schema: z.object({
         suggestions: z.array(z.object({

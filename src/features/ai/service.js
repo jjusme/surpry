@@ -26,19 +26,6 @@ export async function suggestGifts(context) {
   return res.json();
 }
 
-export async function parseExpense(text, participants) {
-  const res = await fetch("/api/ai/parse-expense", {
-    method: "POST",
-    headers: await authHeaders(),
-    body: JSON.stringify({ text, participants })
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || "Error al analizar el gasto");
-  }
-  return res.json();
-}
-
 export async function getActivitySummary(context) {
   const res = await fetch("/api/ai/activity-summary", {
     method: "POST",
@@ -48,6 +35,19 @@ export async function getActivitySummary(context) {
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error || "Error al generar resumen");
+  }
+  return res.json();
+}
+
+export async function assignTasksWithAI(tasks, participants) {
+  const res = await fetch("/api/ai/assign-tasks", {
+    method: "POST",
+    headers: await authHeaders(),
+    body: JSON.stringify({ tasks, participants })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "Error al autoasignar tareas");
   }
   return res.json();
 }
