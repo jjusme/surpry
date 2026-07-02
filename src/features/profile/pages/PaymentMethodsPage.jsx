@@ -117,14 +117,14 @@ export function PaymentMethodsPage() {
   });
 
   if (listQuery.isLoading) {
-    return <LoadingState message="Cargando metodos..." fullScreen />;
+    return <LoadingState message="Cargando métodos..." fullScreen />;
   }
 
   if (listQuery.error) {
     return (
       <div className="app-frame flex items-center px-4">
         <ErrorState
-          title="No pudimos cargar tus metodos"
+          title="No pudimos cargar tus métodos"
           description={listQuery.error.message}
           onRetry={listQuery.refetch}
         />
@@ -189,7 +189,7 @@ export function PaymentMethodsPage() {
               Usar como método por defecto
             </label>
             <Button type="submit" className="w-full" size="lg" disabled={isSubmitting || saveMutation.isPending}>
-              {saveMutation.isPending ? "Guardando..." : editing ? "Actualizar metodo" : "Guardar metodo"}
+              {saveMutation.isPending ? "Guardando..." : editing ? "Actualizar método" : "Guardar método"}
             </Button>
           </form>
         </Card>

@@ -739,7 +739,7 @@ export function EventDetailPage() {
                 <FormField label="Notas o detalles">
                   <TextArea
                     rows={2}
-                    placeholder="Talle, color o por qué crees que es buena idea."
+                    placeholder="Talla, color o por qué crees que es buena idea."
                     value={giftForm.notes}
                     onChange={(e) => setGiftForm((c) => ({ ...c, notes: e.target.value }))}
                   />

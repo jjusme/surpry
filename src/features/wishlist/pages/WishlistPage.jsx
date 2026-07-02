@@ -34,7 +34,7 @@ const CATEGORIES = [
 
 const schema = z.object({
   id: z.string().optional(),
-  title: z.string().min(2, "Agrega un titulo claro."),
+  title: z.string().min(2, "Agrega un título claro."),
   url: z.string().optional(),
   notes: z.string().optional(),
   price_estimate: z.string().optional(),
