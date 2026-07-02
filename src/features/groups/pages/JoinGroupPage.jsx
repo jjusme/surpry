@@ -4,6 +4,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { AppShell } from "../../../components/layout/AppShell";
 import { PageHeader } from "../../../components/layout/PageHeader";
 import { Button } from "../../../components/ui/Button";
+import { BrandAsset } from "../../../components/ui/BrandAsset";
 import { Card } from "../../../components/ui/Card";
 import { LoadingState } from "../../../components/feedback/LoadingState";
 import { ErrorState } from "../../../components/feedback/ErrorState";
@@ -56,13 +57,11 @@ export function JoinGroupPage() {
   const group = inviteQuery.data?.groups;
 
   return (
-    <AppShell hideNav header={<PageHeader title="Invitación" subtitle="Plan Secreto" />}>
+    <AppShell hideNav header={<PageHeader />}>
       <div className="space-y-6 pt-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
         <div className="flex flex-col items-center text-center gap-4">
-          <div className="flex size-20 items-center justify-center rounded-[1.75rem] bg-primary/15 shadow-float text-primary">
-            <span className="material-symbols-outlined text-[2.5rem]" style={{ fontVariationSettings: "'FILL' 1" }}>
-              favorite
-            </span>
+          <div className="flex size-20 items-center justify-center rounded-[1.75rem] bg-primary/15 shadow-float">
+            <BrandAsset variant="icon" className="size-12" />
           </div>
           <div className="space-y-2">
             <p className="text-xs font-black uppercase tracking-[0.24em] text-primary">Solicitud de Cómplice</p>

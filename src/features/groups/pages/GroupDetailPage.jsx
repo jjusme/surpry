@@ -13,6 +13,7 @@ import { Avatar } from "../../../components/ui/Avatar";
 import { LoadingState } from "../../../components/feedback/LoadingState";
 import { ErrorState } from "../../../components/feedback/ErrorState";
 import { ConfirmDialog } from "../../../components/ui/ConfirmDialog";
+import { NotificationBell } from "../../../components/ui/NotificationBell";
 import { useAuth } from "../../auth/AuthContext";
 import { createEvent } from "../../events/service";
 import { listGroupExchanges, createExchange } from "../../exchanges/service";
@@ -123,9 +124,13 @@ export function GroupDetailPage() {
   return (
     <AppShell
       activeTab="grupos"
-      header={<PageHeader title="Detalles del grupo" backTo="/grupos" />}
+      header={<PageHeader action={<NotificationBell />} />}
     >
       <div className="space-y-5 pt-4">
+        <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-sm font-bold text-text-muted active:text-text transition-colors">
+          <span className="material-symbols-outlined text-[1rem]">arrow_back</span>
+          Volver
+        </button>
         {/* Group hero */}
         <div className="flex flex-col items-center gap-3 py-4 text-center animate-in fade-in zoom-in duration-500">
           <div className="flex size-24 items-center justify-center rounded-[2rem] bg-gradient-to-br from-primary/30 to-primary/10 shadow-float ring-4 ring-bg">

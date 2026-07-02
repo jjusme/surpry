@@ -1,9 +1,11 @@
-﻿import React, { useMemo, useState, useEffect } from "react";
+﻿import React, { useMemo, useState, useEffect, useRef } from "react";
+import { shootCelebration, shootCompletion } from "../../../utils/confetti";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "../../../components/layout/AppShell";
 import { PageHeader } from "../../../components/layout/PageHeader";
+import { NotificationBell } from "../../../components/ui/NotificationBell";
 import { Card } from "../../../components/ui/Card";
 import { Button } from "../../../components/ui/Button";
 import { Input } from "../../../components/ui/Input";
@@ -300,6 +302,7 @@ export function EventDetailPage() {
   const completeEventMutation = useMutation({
     mutationFn: () => completeEvent(eventId),
     onSuccess: async () => {
+      shootCompletion();
       toast.success("Evento completado");
       await queryClient.invalidateQueries({ queryKey: ["event-detail", eventId] });
     },
@@ -314,6 +317,15 @@ export function EventDetailPage() {
       await queryClient.invalidateQueries({ queryKey: ["event-detail", eventId] });
     }
   });
+
+  // Confetti — escenario 1: evento es HOY
+  useEffect(() => {
+    if (!eventState?.isToday) return;
+    const key = `surpry_confetti_today_${eventId}`;
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, "1");
+    shootCelebration();
+  }, [eventState?.isToday, eventId]);
 
   // --- Birthday Brief ---
   const [birthdayProfile, setBirthdayProfile] = useState(null);
@@ -445,14 +457,14 @@ export function EventDetailPage() {
     <AppShell
       activeTab="eventos"
       header={
-        <PageHeader
-          subtitle={event?.event_type === 'gathering' ? 'Convivio' : 'Plan Sorpresa'}
-          title={event?.event_type === 'gathering' ? (event?.title || 'Convivio') : (event?.birthday_profile?.display_name || 'Sorpresa')}
-          backTo="/eventos"
-        />
+        <PageHeader action={<NotificationBell />} />
       }
     >
       <div className="space-y-4 pt-4 pb-12">
+        <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-sm font-bold text-text-muted active:text-text transition-colors">
+          <span className="material-symbols-outlined text-[1rem]">arrow_back</span>
+          Volver
+        </button>
         {/* Hero */}
         <div className="flex flex-col items-center gap-3 py-4 text-center animate-in fade-in zoom-in duration-500">
           <div className="relative">

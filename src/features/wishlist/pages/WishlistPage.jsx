@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
 import { AppShell } from "../../../components/layout/AppShell";
 import { PageHeader } from "../../../components/layout/PageHeader";
 import { Button } from "../../../components/ui/Button";
@@ -15,6 +16,8 @@ import { TextArea } from "../../../components/ui/TextArea";
 import { LoadingState } from "../../../components/feedback/LoadingState";
 import { ErrorState } from "../../../components/feedback/ErrorState";
 import { ConfirmDialog } from "../../../components/ui/ConfirmDialog";
+import { BottomSheet } from "../../../components/ui/BottomSheet";
+import { NotificationBell } from "../../../components/ui/NotificationBell";
 import { useAuth } from "../../auth/AuthContext";
 import { deleteWishlistItem, listMyWishlist, saveWishlistItem, toggleFulfilled } from "../service";
 import { formatCurrency } from "../../../utils/format";
@@ -44,6 +47,7 @@ const schema = z.object({
 });
 
 export function WishlistPage() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, isSupabaseConfigured } = useAuth();
   const [showForm, setShowForm] = useState(false);
@@ -139,22 +143,36 @@ export function WishlistPage() {
 
   return (
     <AppShell activeTab="perfil" header={
-      <PageHeader title="Mi wishlist" subtitle="Ideas de regalo" backTo="/perfil"
-        action={<Button variant="ghost" size="icon" onClick={openNewForm}><span className="material-symbols-outlined text-[1.25rem]">add</span></Button>} />
+      <PageHeader action={<NotificationBell />} />
     }>
       <div className="space-y-4 pt-4">
-        {/* Form modal */}
-        {showForm && (
-          <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-300">
-            <div className="w-full max-w-lg max-h-[85vh] overflow-y-auto bg-bg rounded-t-[2rem] sm:rounded-[2rem] p-6 shadow-2xl animate-in slide-in-from-bottom duration-300">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold text-text">{editing ? "Editar regalo" : "Agregar regalo"}</h2>
-                <button type="button" onClick={() => { setShowForm(false); setEditing(null); }} className="flex size-9 items-center justify-center rounded-full bg-surface-muted text-text-muted hover:text-text transition-colors">
-                  <span className="material-symbols-outlined text-[1.25rem]">close</span>
-                </button>
-              </div>
+        <section className="space-y-2 px-1">
+          <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-sm font-bold text-text-muted active:text-text transition-colors mb-1">
+            <span className="material-symbols-outlined text-[1rem]">arrow_back</span>
+            Volver
+          </button>
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-primary">Mi wishlist</p>
+          <h2 className="text-[1.9rem] font-black tracking-tight text-text">Ideas de regalo</h2>
+          <p className="text-sm leading-relaxed text-text-muted">
+            Lo que tus grupos verán para inspirarse.
+          </p>
+          <Button
+            size="sm"
+            className="mt-1 h-9 rounded-full px-5 text-[10px] font-black uppercase tracking-widest shadow-float"
+            onClick={openNewForm}
+          >
+            + Agregar regalo
+          </Button>
+        </section>
 
-              <form className="space-y-4" onSubmit={onSubmit}>
+        {/* Form modal */}
+        <BottomSheet
+          isOpen={showForm}
+          onClose={() => { setShowForm(false); setEditing(null); }}
+          title={editing ? "Editar regalo" : "Agregar regalo"}
+        >
+          <div className="max-h-[70vh] overflow-y-auto">
+            <form className="space-y-4" onSubmit={onSubmit}>
                 <input type="hidden" {...register("id")} />
                 <input type="hidden" {...register("category")} />
                 <FormField label="Título" error={errors.title?.message}>
@@ -229,8 +247,7 @@ export function WishlistPage() {
                 </Button>
               </form>
             </div>
-          </div>
-        )}
+          </BottomSheet>
 
         {/* List */}
         <div className="space-y-3">

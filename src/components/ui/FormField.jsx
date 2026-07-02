@@ -1,9 +1,9 @@
 ﻿import React from "react";
 import { cn } from "../../utils/cn";
 
-export function FormField({ label, hint, error, children, className }) {
+export function FormField({ label, hint, error, children, className, htmlFor }) {
   return (
-    <label className={cn("flex flex-col gap-2", className)}>
+    <label htmlFor={htmlFor} className={cn("flex flex-col gap-2", className)}>
       <span className="text-sm font-semibold text-text">{label}</span>
       {children}
       {error ? (

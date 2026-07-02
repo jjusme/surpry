@@ -7,7 +7,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['surpry.png', 'icon.svg'],
+      includeAssets: ['surpry-icon.png', 'surpry-logo-nobg.png'],
       manifest: {
         name: 'Surpry',
         short_name: 'Surpry',
@@ -17,10 +17,10 @@ export default defineConfig({
         display: 'standalone',
         icons: [
           {
-            src: 'surpry.png',
-            sizes: '192x192 512x512',
+            src: 'surpry-icon.png',
+            sizes: '500x500',
             type: 'image/png',
-            purpose: 'any maskable'
+            purpose: 'any'
           }
         ]
       }

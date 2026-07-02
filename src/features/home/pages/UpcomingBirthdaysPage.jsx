@@ -7,10 +7,12 @@ import { PageHeader } from "../../../components/layout/PageHeader";
 import { Card } from "../../../components/ui/Card";
 import { Avatar } from "../../../components/ui/Avatar";
 import { Button } from "../../../components/ui/Button";
+import { NotificationBell } from "../../../components/ui/NotificationBell";
 import { Input } from "../../../components/ui/Input";
 import { FormField } from "../../../components/ui/FormField";
 import { LoadingState } from "../../../components/feedback/LoadingState";
 import { ErrorState } from "../../../components/feedback/ErrorState";
+import { ConfirmDialog } from "../../../components/ui/ConfirmDialog";
 import { useAuth } from "../../auth/AuthContext";
 import { listGroups } from "../../groups/service";
 import { requireSupabase } from "../../../lib/supabase";
@@ -85,6 +87,7 @@ export function UpcomingBirthdaysPage() {
   const { user } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ display_name: "", birthday_day: "", birthday_month: "" });
+  const [confirm, setConfirm] = useState(null);
 
   const groupsQuery = useQuery({
     queryKey: ["groups", user?.id],
@@ -200,23 +203,35 @@ export function UpcomingBirthdaysPage() {
     <AppShell
       activeTab="cumpleanios"
       header={(
-        <PageHeader
-          title="Próximos cumpleaños"
-          subtitle={`${allBirthdays.length} fechas por cuidar`}
-          backTo="/inicio"
-          action={(
-            <Button
-              size="sm"
-              className="h-9 rounded-full px-4 text-[10px] font-black uppercase tracking-widest shadow-float"
-              onClick={() => setShowForm((value) => !value)}
-            >
-              {showForm ? "Cancelar" : "Agregar"}
-            </Button>
-          )}
-        />
+        <PageHeader action={<NotificationBell />} />
       )}
     >
       <div className="space-y-5 pt-4">
+        <button type="button" onClick={() => navigate(-1)} className="flex items-center gap-1 text-sm font-bold text-text-muted active:text-text transition-colors">
+          <span className="material-symbols-outlined text-[1rem]">arrow_back</span>
+          Volver
+        </button>
+        <section className="space-y-2 px-1">
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-primary">
+            Próximos cumpleaños
+          </p>
+          <h2 className="text-[1.9rem] font-black tracking-tight text-text">
+            Fechas que importan
+          </h2>
+          <p className="text-sm leading-relaxed text-text-muted">
+            {allBirthdays.length > 0
+              ? `Tienes ${allBirthdays.length} fecha${allBirthdays.length === 1 ? "" : "s"} por cuidar.`
+              : "Agrega amigos y familiares para no perderte ningún cumpleaños."
+            }
+          </p>
+          <Button
+            size="sm"
+            className="mt-1 h-9 rounded-full px-5 text-[10px] font-black uppercase tracking-widest shadow-float"
+            onClick={() => setShowForm((value) => !value)}
+          >
+            {showForm ? "Cancelar" : "+ Agregar cumpleaños"}
+          </Button>
+        </section>
         {showForm && (
           <Card className="space-y-4 border-primary/20 p-5 animate-in fade-in slide-in-from-top-2 duration-300">
             <div className="space-y-1">
@@ -326,6 +341,7 @@ export function UpcomingBirthdaysPage() {
                         url={profile.avatar_url}
                         className="size-14 shadow-card"
                         ring
+                        ringClassName={profile.days === 0 ? "bg-gradient-to-tr from-yellow-400 to-amber-400 shadow-lg" : undefined}
                       />
 
                       <div className="min-w-0 flex-1">
@@ -357,16 +373,8 @@ export function UpcomingBirthdaysPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between border-t border-border/60 pt-3">
-                      {profile.type === "profile" ? (
-                        <span className="text-xs font-bold text-text-muted">
-                          Toca revisar su perfil y wishlist
-                        </span>
-                      ) : (
-                        <span className="text-xs font-bold text-text-muted">
-                          Puedes eliminarlo cuando ya no haga falta
-                        </span>
-                      )}
+                    <div className="flex items-center justify-end border-t border-border/60 pt-3">
+                      
 
                       {profile.type === "manual" ? (
                         <button
@@ -374,7 +382,7 @@ export function UpcomingBirthdaysPage() {
                           className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-black uppercase tracking-[0.15em] text-danger transition-colors hover:bg-danger/5"
                           onClick={(event) => {
                             event.stopPropagation();
-                            deleteMutation.mutate(profile.manual_id);
+                            setConfirm(profile.manual_id);
                           }}
                         >
                           <span className="material-symbols-outlined text-[1rem]">delete</span>
@@ -394,6 +402,16 @@ export function UpcomingBirthdaysPage() {
           ))
         )}
       </div>
+      <ConfirmDialog
+        isOpen={Boolean(confirm)}
+        title="¿Eliminar cumpleaños?"
+        description="Se eliminará de tu lista. Esta acción no se puede deshacer."
+        confirmLabel="Sí, eliminar"
+        cancelLabel="Cancelar"
+        variant="danger"
+        onConfirm={() => { deleteMutation.mutate(confirm); setConfirm(null); }}
+        onCancel={() => setConfirm(null)}
+      />
     </AppShell>
   );
 }

@@ -11,6 +11,7 @@ import { TextArea } from "../../../components/ui/TextArea";
 import { LoadingState } from "../../../components/feedback/LoadingState";
 import { ErrorState } from "../../../components/feedback/ErrorState";
 import { StatusBadge } from "../../../components/ui/StatusBadge";
+import { NotificationBell } from "../../../components/ui/NotificationBell";
 import { useAuth } from "../../auth/AuthContext";
 import {
   getShareDetail,
@@ -95,9 +96,13 @@ export function ShareDetailPage() {
   return (
     <AppShell
       activeTab="eventos"
-      header={<PageHeader title="Detalle de pago" backTo={share?.event_id ? `/eventos/${share.event_id}` : "/inicio"} />}
+      header={<PageHeader action={<NotificationBell />} />}
     >
       <div className="space-y-4 pt-4">
+        <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-sm font-bold text-text-muted active:text-text transition-colors">
+          <span className="material-symbols-outlined text-[1rem]">arrow_back</span>
+          Volver
+        </button>
         <div className="flex items-center justify-between gap-3">
           <div>
             <h2 className="text-2xl font-bold text-text">{formatCurrency(share?.amount_due)}</h2>

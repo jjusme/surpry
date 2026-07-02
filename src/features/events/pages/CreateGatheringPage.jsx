@@ -10,6 +10,7 @@ import { Input } from "../../../components/ui/Input";
 import { FormField } from "../../../components/ui/FormField";
 import { Select } from "../../../components/ui/Select";
 import { LoadingState } from "../../../components/feedback/LoadingState";
+import { NotificationBell } from "../../../components/ui/NotificationBell";
 import { useAuth } from "../../auth/AuthContext";
 import { listGroups } from "../../groups/service";
 import { createGathering } from "../service";
@@ -78,9 +79,13 @@ export function CreateGatheringPage() {
   return (
     <AppShell
       activeTab="eventos"
-      header={<PageHeader title="Nuevo Convivio" backTo="/eventos" />}
+      header={<PageHeader action={<NotificationBell />} />}
     >
       <div className="space-y-6 pt-4 pb-12">
+        <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-sm font-bold text-text-muted active:text-text transition-colors">
+          <span className="material-symbols-outlined text-[1rem]">arrow_back</span>
+          Volver
+        </button>
         <Card className="p-6 space-y-6 shadow-sm">
           <div className="space-y-1">
             <h3 className="text-xl font-black text-text tracking-tight uppercase">Armar el plan</h3>

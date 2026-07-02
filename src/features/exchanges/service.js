@@ -1,5 +1,29 @@
 import { requireSupabase } from "../../lib/supabase";
 
+export async function listMyExchanges(userId) {
+  const supabase = requireSupabase();
+  const { data, error } = await supabase
+    .from("exchange_participants")
+    .select(`
+      gift_exchanges (
+        id, name, status, budget, exchange_date, group_id, created_by,
+        groups (id, name),
+        participants:exchange_participants(count)
+      )
+    `)
+    .eq("user_id", userId)
+    .order("joined_at", { ascending: false });
+
+  if (error) throw error;
+  return (data ?? [])
+    .map((row) => row.gift_exchanges)
+    .filter(Boolean)
+    .map((ex) => ({
+      ...ex,
+      participant_count: ex.participants?.[0]?.count ?? 0
+    }));
+}
+
 export async function listGroupExchanges(groupId) {
   const supabase = requireSupabase();
   const { data, error } = await supabase

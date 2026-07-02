@@ -34,6 +34,7 @@ const ShareDetailPage = lazyPage(() => import("../features/reimbursements/pages/
 const ExchangeDetailPage = lazyPage(() => import("../features/exchanges/pages/ExchangeDetailPage"), "ExchangeDetailPage");
 const WishlistPage = lazyPage(() => import("../features/wishlist/pages/WishlistPage"), "WishlistPage");
 const NotificationsPage = lazyPage(() => import("../features/notifications/pages/NotificationsPage"), "NotificationsPage");
+const NotFoundPage = lazyPage(() => import("../features/auth/pages/NotFoundPage"), "NotFoundPage");
 
 export const router = createBrowserRouter([
   {
@@ -80,6 +81,6 @@ export const router = createBrowserRouter([
   },
   {
     path: "*",
-    element: <Navigate to="/inicio" replace />
+    element: withSuspense(<NotFoundPage />)
   }
 ]);

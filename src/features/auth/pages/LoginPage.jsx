@@ -4,6 +4,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "../../../components/ui/Button";
+import { BrandAsset } from "../../../components/ui/BrandAsset";
 import { Card } from "../../../components/ui/Card";
 import { FormField } from "../../../components/ui/FormField";
 import { Input } from "../../../components/ui/Input";
@@ -65,14 +66,7 @@ export function LoginPage() {
   return (
     <div className="space-y-8">
       <div className="flex flex-col items-center gap-4 text-center">
-        <div className="flex size-20 items-center justify-center rounded-[1.75rem] bg-primary/15 shadow-float">
-          <span
-            className="material-symbols-outlined text-[2.5rem] text-primary"
-            style={{ fontVariationSettings: "'FILL' 1" }}
-          >
-            card_giftcard
-          </span>
-        </div>
+        <BrandAsset variant="logo" className="h-20 w-auto max-w-[13rem]" />
         <div className="space-y-1">
           <h1 className="text-3xl font-extrabold tracking-tight text-text">
             Bienvenido de vuelta

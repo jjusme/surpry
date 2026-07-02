@@ -234,14 +234,19 @@ export function ProfileSetupPage() {
   const hasCompletedSetup = profileQuery.data?.has_completed_setup === true;
 
   return (
-    <AppShell hideNav header={
-      <PageHeader
-        title="Configura tu perfil"
-        subtitle={`Paso ${step} de 3`}
-        backTo={hasCompletedSetup ? "/perfil" : undefined}
-      />
-    }>
+    <AppShell hideNav header={<PageHeader />}>
       <div className="space-y-4 pt-4 pb-12">
+        {hasCompletedSetup && (
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-1 text-sm font-bold text-text-muted active:text-text transition-colors"
+          >
+            <span className="material-symbols-outlined text-[1rem]">arrow_back</span>
+            Volver
+          </button>
+        )}
+
         {/* Progress dots */}
         <div className="flex justify-center gap-2 mb-2">
           {[1, 2, 3].map((s) => (

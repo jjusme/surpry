@@ -11,6 +11,7 @@ import { LoadingState } from "../../../components/feedback/LoadingState";
 import { ErrorState } from "../../../components/feedback/ErrorState";
 import { useAuth } from "../../auth/AuthContext";
 import { listNotifications, markAllNotificationsRead, markNotificationRead } from "../service";
+import { NotificationBell } from "../../../components/ui/NotificationBell";
 import { requireSupabase } from "../../../lib/supabase";
 import { cn } from "../../../utils/cn";
 import React, { useEffect } from "react";
@@ -108,26 +109,30 @@ export function NotificationsPage() {
         <AppShell
             activeTab="inicio"
             header={
-                <PageHeader
-                    title="Notificaciones"
-                    backTo="/inicio"
-                    action={
-                        unreadCount > 0 ? (
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-xs font-bold text-primary"
-                                onClick={() => markAllReadMutation.mutate()}
-                                disabled={markAllReadMutation.isPending}
-                            >
-                                {markAllReadMutation.isPending ? "Marcando..." : "Marcar todas"}
-                            </Button>
-                        ) : null
-                    }
-                />
+                <PageHeader action={<NotificationBell />} />
             }
         >
             <div className="space-y-4 pt-4">
+                <section className="space-y-2 px-1">
+                    <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-sm font-bold text-text-muted active:text-text transition-colors mb-1">
+                        <span className="material-symbols-outlined text-[1rem]">arrow_back</span>
+                        Volver
+                    </button>
+                    <p className="text-xs font-black uppercase tracking-[0.2em] text-primary">Centro de avisos</p>
+                    <h2 className="text-[1.9rem] font-black tracking-tight text-text">Notificaciones</h2>
+                    {unreadCount > 0 && (
+                        <Button
+                            size="sm"
+                            variant="secondary"
+                            className="mt-1 h-9 rounded-full px-5 text-[10px] font-black uppercase tracking-widest"
+                            onClick={() => markAllReadMutation.mutate()}
+                            disabled={markAllReadMutation.isPending}
+                        >
+                            {markAllReadMutation.isPending ? "Marcando..." : "Marcar todas como leídas"}
+                        </Button>
+                    )}
+                </section>
+
                 {notifications.length === 0 ? (
                     <EmptyState
                         icon="notifications_off"

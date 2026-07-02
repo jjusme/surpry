@@ -1,7 +1,8 @@
 ﻿import React, { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { NotificationBell } from "../../../components/ui/NotificationBell";
 import { AppShell } from "../../../components/layout/AppShell";
 import { PageHeader } from "../../../components/layout/PageHeader";
 import { Card } from "../../../components/ui/Card";
@@ -15,6 +16,7 @@ import { ConfirmDialog } from "../../../components/ui/ConfirmDialog";
 import { AiSuggestionCard } from "../../../components/ui/AiSuggestionCard";
 import { LoadingState } from "../../../components/feedback/LoadingState";
 import { ErrorState } from "../../../components/feedback/ErrorState";
+import { EmptyState } from "../../../components/feedback/EmptyState";
 import { useAuth } from "../../auth/AuthContext";
 import { requireSupabase } from "../../../lib/supabase";
 import { formatCurrency, formatDate } from "../../../utils/format";
@@ -44,6 +46,7 @@ const STATUS_LABEL = {
 };
 
 export function ExchangeDetailPage() {
+  const navigate = useNavigate();
   const { exchangeId } = useParams();
   const { user, isSupabaseConfigured } = useAuth();
   const queryClient = useQueryClient();
@@ -51,6 +54,7 @@ export function ExchangeDetailPage() {
   const [confirm, setConfirm] = useState(null);
   const [exclA, setExclA] = useState("");
   const [exclB, setExclB] = useState("");
+  const [showAllParticipants, setShowAllParticipants] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({ name: "", budget: "", exchange_date: "", description: "" });
   const [aiSuggestions, setAiSuggestions] = useState([]);
@@ -215,20 +219,27 @@ export function ExchangeDetailPage() {
     <AppShell
       activeTab="grupos"
       header={
-        <PageHeader
-          subtitle="Intercambio"
-          title={exchange.name}
-          backTo={`/grupos/${exchange.group_id}`}
-        />
+        <PageHeader action={<NotificationBell />} />
       }
     >
       <div className="space-y-4 pt-4 pb-12">
+        <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-sm font-bold text-text-muted active:text-text transition-colors">
+          <span className="material-symbols-outlined text-[1rem]">arrow_back</span>
+          Volver
+        </button>
         {/* Hero / status */}
-        <div className="flex flex-col items-center gap-3 py-2 text-center">
-          <div className="size-24 rounded-[2rem] bg-primary/10 flex items-center justify-center ring-4 ring-bg shadow-float">
-            <span className="material-symbols-outlined text-primary text-5xl">redeem</span>
+        <div
+          className="flex flex-col items-center gap-3 py-6 text-center rounded-3xl px-4 mx-[-0.5rem]"
+          style={{ background: "linear-gradient(160deg, rgba(34,197,94,0.13) 0%, rgba(239,68,68,0.07) 55%, transparent 100%)" }}
+        >
+          <div className="relative">
+            <div className="size-24 rounded-[2rem] bg-gradient-to-br from-green-500/25 to-emerald-600/15 flex items-center justify-center ring-4 ring-bg shadow-float">
+              <span className="material-symbols-outlined text-green-600 text-5xl" style={{ fontVariationSettings: "'FILL' 1" }}>redeem</span>
+            </div>
+            <span className="absolute -top-2 -right-2 text-xl select-none">⭐</span>
           </div>
           <div className="space-y-1">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-green-700/80">🎄 Intercambio navideño</p>
             <h2 className="text-2xl font-black text-text tracking-tight">{exchange.name}</h2>
             <span className={cn("inline-block rounded-full px-3 py-0.5 text-[10px] font-black uppercase tracking-[0.15em]", status.cls)}>
               {status.label}
@@ -259,8 +270,11 @@ export function ExchangeDetailPage() {
 
         {/* ===== Mi asignación (sorteado/cerrado) ===== */}
         {exchange.status !== "open" && isParticipant && (
-          <Card className="space-y-4 p-5 border-l-4 border-primary">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">Te toca regalarle a</p>
+          <Card
+            className="space-y-4 p-5 border-l-4 border-green-500/70"
+            style={{ background: "linear-gradient(135deg, rgba(34,197,94,0.07) 0%, transparent 60%)" }}
+          >
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-green-700/80">🎁 Te toca regalarle a</p>
             {assignmentQuery.isLoading ? (
               <LoadingState message="Revelando..." />
             ) : receiver ? (
@@ -377,7 +391,7 @@ export function ExchangeDetailPage() {
             )}
           </div>
           <div className="grid gap-2">
-            {participants.map((p) => (
+            {(showAllParticipants ? participants : participants.slice(0, 4)).map((p) => (
               <div key={p.id} className="flex items-center gap-3 rounded-2xl bg-surface/50 border border-border/40 px-4 py-2.5">
                 <Avatar name={p.profiles?.display_name} url={p.profiles?.avatar_url} className="size-9 ring-2 ring-bg" />
                 <span className="flex-1 text-sm font-bold text-text truncate">
@@ -400,9 +414,28 @@ export function ExchangeDetailPage() {
               </div>
             ))}
             {participants.length === 0 && (
-              <p className="text-sm text-text-muted italic py-2">Aún no hay participantes. ¡Sé el primero en unirte!</p>
+              <EmptyState icon="group" title="Sin participantes" description="Aún no se ha unido nadie. ¡Sé el primero!" />
             )}
           </div>
+          {participants.length > 4 && (
+            <button
+              type="button"
+              onClick={() => setShowAllParticipants((v) => !v)}
+              className="flex w-full items-center justify-center gap-1 pt-1 text-xs font-black uppercase tracking-widest text-primary/70 hover:text-primary transition-colors"
+            >
+              {showAllParticipants ? (
+                <>
+                  <span className="material-symbols-outlined text-[1rem]">expand_less</span>
+                  Ver menos
+                </>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined text-[1rem]">expand_more</span>
+                  Ver todos ({participants.length})
+                </>
+              )}
+            </button>
+          )}
         </Card>
 
         {/* ===== Controles del organizador (abierto) ===== */}
@@ -410,8 +443,8 @@ export function ExchangeDetailPage() {
           <Card className="space-y-5 p-5 border-t-2 border-primary/20">
             <h3 className="text-lg font-black text-text tracking-tight">Organización</h3>
 
-            {/* Exclusiones */}
-            <div className="space-y-3">
+            {/* Exclusiones (pendiente) */}
+            {/* <div className="space-y-3">
               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted">Restricciones (parejas que NO se tocan)</p>
               {exclusions.length > 0 && (
                 <div className="space-y-2">
@@ -451,7 +484,7 @@ export function ExchangeDetailPage() {
                   <span className="material-symbols-outlined text-[1.25rem]">add</span>
                 </Button>
               </div>
-            </div>
+            </div> */}
 
             {/* Editar */}
             {isEditing ? (
@@ -485,6 +518,7 @@ export function ExchangeDetailPage() {
             <Button
               size="pill"
               className="w-full h-12 font-black text-base"
+              style={participants.length >= 3 ? { background: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)" } : undefined}
               onClick={() => askConfirm({
                 title: "¿Realizar el sorteo?",
                 description: "Se asignarán los amigos secretos y el intercambio quedará bloqueado para nuevos participantes. Podrás reiniciarlo si es necesario.",
@@ -494,7 +528,7 @@ export function ExchangeDetailPage() {
               })}
               disabled={drawMutation.isPending || participants.length < 3}
             >
-              {participants.length < 3 ? "Faltan participantes (mín. 3)" : "🎲 Realizar sorteo"}
+              {participants.length < 3 ? "Faltan participantes (mín. 3)" : "🎄 Realizar sorteo"}
             </Button>
 
             <button

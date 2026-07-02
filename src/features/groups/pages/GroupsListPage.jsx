@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-hot-toast";
 import { AppShell } from "../../../components/layout/AppShell";
 import { PageHeader } from "../../../components/layout/PageHeader";
+import { NotificationBell } from "../../../components/ui/NotificationBell";
 import { Card } from "../../../components/ui/Card";
 import { Button } from "../../../components/ui/Button";
 import { AvatarStack } from "../../../components/ui/AvatarStack";
@@ -12,6 +13,7 @@ import { FormField } from "../../../components/ui/FormField";
 import { LoadingState } from "../../../components/feedback/LoadingState";
 import { ErrorState } from "../../../components/feedback/ErrorState";
 import { EmptyState } from "../../../components/feedback/EmptyState";
+import { BottomSheet } from "../../../components/ui/BottomSheet";
 import { useAuth } from "../../auth/AuthContext";
 import { createGroup, listGroups } from "../service";
 import { daysUntilBirthday, getBirthdayCountdownLabel } from "../../../utils/format";
@@ -80,23 +82,30 @@ export function GroupsListPage() {
     <AppShell
       activeTab="grupos"
       header={(
-        <PageHeader
-          title="Mis grupos"
-          subtitle={`${listQuery.data.length} espacio${listQuery.data.length === 1 ? "" : "s"} activo${listQuery.data.length === 1 ? "" : "s"}`}
-          action={(
-            <Button
-              size="sm"
-              className="h-9 rounded-full px-4 text-[10px] font-black uppercase tracking-widest shadow-float"
-              onClick={() => setShowCreate(true)}
-            >
-              Crear
-            </Button>
-          )}
-        />
+        <PageHeader action={<NotificationBell />} />
       )}
       hideNav={showCreate}
     >
       <div className="space-y-4 pt-4">
+        <section className="space-y-2 px-1">
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-primary">
+            Mis grupos
+          </p>
+          <h2 className="text-[1.9rem] font-black tracking-tight text-text">
+            Tus cómplices
+          </h2>
+          <p className="text-sm leading-relaxed text-text-muted">
+            Cada grupo es un equipo listo para planear una sorpresa juntos.
+          </p>
+          <Button
+            size="sm"
+            className="mt-1 h-9 rounded-full px-5 text-[10px] font-black uppercase tracking-widest shadow-float"
+            onClick={() => setShowCreate(true)}
+          >
+            + Crear grupo
+          </Button>
+        </section>
+
         {listQuery.data.length === 0 ? (
           <EmptyState
             icon="groups"
@@ -147,7 +156,7 @@ export function GroupsListPage() {
                               name: member.profiles?.display_name,
                               avatar_url: member.profiles?.avatar_url
                             }))}
-                            max={4}
+                            max={2}
                           />
                         </div>
 
@@ -175,10 +184,8 @@ export function GroupsListPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between border-t border-border/60 pt-3">
-                      <span className="text-xs font-bold text-text-muted">
-                        Entra para ver eventos, intercambios e invitaciones
-                      </span>
+                    <div className="flex items-center justify-end border-t border-border/60 pt-3">
+                      
                       <span className="inline-flex items-center gap-1 text-xs font-black uppercase tracking-[0.15em] text-primary">
                         Ver grupo
                         <span className="material-symbols-outlined text-[1rem]">chevron_right</span>
@@ -201,47 +208,30 @@ export function GroupsListPage() {
         )}
       </div>
 
-      {showCreate && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="w-full max-w-[28rem] rounded-[2rem] bg-bg p-6 shadow-2xl animate-in zoom-in-95 duration-300">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-xl font-bold text-text">Crear grupo</h2>
-              <button
-                type="button"
-                onClick={() => setShowCreate(false)}
-                className="flex size-10 items-center justify-center rounded-full bg-surface-muted text-text-muted transition-colors hover:text-text"
-              >
-                <span className="material-symbols-outlined text-[1.25rem]">close</span>
-              </button>
-            </div>
-
-            <p className="mb-6 text-sm leading-relaxed text-text-muted">
-              Crea un grupo para familia, amigos o trabajo y comparte un link para empezar a planear.
-            </p>
-
-            <form className="space-y-6" onSubmit={handleCreate}>
-              <FormField label="Nombre del grupo">
-                <Input
-                  placeholder="Ej. Amigos de la uni"
-                  value={name}
-                  autoFocus
-                  className="h-14 text-base"
-                  onChange={(event) => setName(event.target.value)}
-                />
-              </FormField>
-
-              <Button
-                type="submit"
-                size="pill"
-                className="w-full"
-                disabled={!isSupabaseConfigured || createMutation.isPending}
-              >
-                {createMutation.isPending ? "Creando grupo..." : "Crear grupo"}
-              </Button>
-            </form>
-          </div>
-        </div>
-      )}
+      <BottomSheet isOpen={showCreate} onClose={() => setShowCreate(false)} title="Crear grupo">
+        <p className="mb-6 text-sm leading-relaxed text-text-muted">
+          Crea un grupo para familia, amigos o trabajo y comparte un link para empezar a planear.
+        </p>
+        <form className="space-y-6" onSubmit={handleCreate}>
+          <FormField label="Nombre del grupo">
+            <Input
+              placeholder="Ej. Amigos de la uni"
+              value={name}
+              autoFocus
+              className="h-14 text-base"
+              onChange={(event) => setName(event.target.value)}
+            />
+          </FormField>
+          <Button
+            type="submit"
+            size="pill"
+            className="w-full"
+            disabled={!isSupabaseConfigured || createMutation.isPending}
+          >
+            {createMutation.isPending ? "Creando grupo..." : "Crear grupo"}
+          </Button>
+        </form>
+      </BottomSheet>
     </AppShell>
   );
 }

@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-hot-toast";
 import { AppShell } from "../../../components/layout/AppShell";
 import { PageHeader } from "../../../components/layout/PageHeader";
+import { NotificationBell } from "../../../components/ui/NotificationBell";
 import { Button } from "../../../components/ui/Button";
 import { Avatar } from "../../../components/ui/Avatar";
 import { Card } from "../../../components/ui/Card";
@@ -19,7 +20,7 @@ import {
   upsertProfile
 } from "../service";
 import { listMyWishlist } from "../../wishlist/service";
-import { formatBirthday, formatCurrency } from "../../../utils/format";
+import { formatBirthday, formatCurrency, daysUntilBirthday } from "../../../utils/format";
 import { cn } from "../../../utils/cn";
 
 const INFO_TILES = [
@@ -60,6 +61,7 @@ export function ProfilePage() {
 
   const effectiveUserId = userId || user?.id;
   const isOwnProfile = !userId || userId === user?.id;
+  const myProfileCache = queryClient.getQueryData(["profile-setup-check", user?.id]);
 
   const profileQuery = useQuery({
     queryKey: ["profile", effectiveUserId],
@@ -142,6 +144,9 @@ export function ProfilePage() {
   const paymentDestinations = isOwnProfile ? (paymentQuery.data || []) : [];
   const displayName = profile?.display_name || user.user_metadata?.display_name || user.email;
 
+  const birthdaySource = isOwnProfile ? myProfileCache : profile;
+  const isBirthdayToday = daysUntilBirthday(birthdaySource?.birthday_day, birthdaySource?.birthday_month) === 0;
+
   const hasSizes = profile?.shirt_size || profile?.shoe_size || profile?.pants_size || profile?.clothing_styles?.length;
   const hasPreferences = profile?.favorite_colors?.length || profile?.favorite_brands?.length || profile?.hobbies?.length;
   const hasDietary = profile?.dietary_restrictions?.length;
@@ -155,17 +160,58 @@ export function ProfilePage() {
   return (
     <AppShell
       activeTab="perfil"
-      header={<PageHeader title={isOwnProfile ? "Mi perfil" : "Perfil"} backTo={isOwnProfile ? null : "/inicio"} />}
+      header={<PageHeader action={<NotificationBell />} />}
     >
       <div className="space-y-6 pt-4">
-        <div className="mx-[-0.5rem] flex flex-col items-center gap-4 rounded-[3rem] bg-gradient-to-b from-primary/10 to-transparent px-4 py-4">
+        <section className="space-y-2 px-1">
+          {!isOwnProfile && (
+            <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-sm font-bold text-text-muted active:text-text transition-colors mb-1">
+              <span className="material-symbols-outlined text-[1rem]">arrow_back</span>
+              Volver
+            </button>
+          )}
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-primary">
+            {isOwnProfile ? "Mi perfil" : "Perfil"}
+          </p>
+          <h2 className="text-[1.9rem] font-black tracking-tight text-text">
+            {isOwnProfile ? displayName : displayName}
+          </h2>
+          {isOwnProfile && (
+            <p className="text-sm leading-relaxed text-text-muted">
+              Tus datos, métodos de pago y estilo en un solo lugar.
+            </p>
+          )}
+        </section>
+
+        <div
+          className={cn(
+            "mx-[-0.5rem] flex flex-col items-center gap-4 rounded-[3rem] px-4 py-4",
+            !isBirthdayToday && "bg-gradient-to-b from-primary/10 to-transparent"
+          )}
+          style={isBirthdayToday ? { background: "linear-gradient(160deg, rgba(251,191,36,0.18) 0%, rgba(245,158,11,0.08) 60%, transparent 100%)" } : undefined}
+        >
+          {/* Estrellitas titilantes — solo en cumpleaños */}
           <div className="relative">
+            {isBirthdayToday && (
+              <>
+                <span className="material-symbols-outlined absolute -top-3 -left-4 text-amber-400 text-[1.1rem] animate-pulse" style={{ fontVariationSettings: "'FILL' 1", animationDelay: "0ms" }}>auto_awesome</span>
+                <span className="material-symbols-outlined absolute -top-1 -right-5 text-yellow-400 text-[0.85rem] animate-pulse" style={{ fontVariationSettings: "'FILL' 1", animationDelay: "400ms" }}>auto_awesome</span>
+                <span className="material-symbols-outlined absolute top-8 -left-6 text-amber-300 text-[0.7rem] animate-pulse" style={{ fontVariationSettings: "'FILL' 1", animationDelay: "800ms" }}>auto_awesome</span>
+                <span className="material-symbols-outlined absolute top-6 -right-6 text-yellow-500 text-[0.9rem] animate-pulse" style={{ fontVariationSettings: "'FILL' 1", animationDelay: "200ms" }}>auto_awesome</span>
+                <span className="material-symbols-outlined absolute -bottom-2 -left-3 text-amber-400 text-[0.75rem] animate-pulse" style={{ fontVariationSettings: "'FILL' 1", animationDelay: "600ms" }}>auto_awesome</span>
+              </>
+            )}
+
             <Avatar
               name={displayName}
               url={profile?.avatar_url}
-              className="size-28 text-2xl shadow-xl ring-offset-4 ring-offset-bg"
+              className="size-28 text-2xl shadow-xl"
               ring
+              ringClassName={isBirthdayToday
+                ? "bg-gradient-to-tr from-yellow-400 to-amber-400 shadow-lg"
+                : undefined}
             />
+
             {isUploading && (
               <div className="absolute inset-0 flex items-center justify-center rounded-full bg-slate-900/60 p-[3px]">
                 <div className="flex size-full items-center justify-center rounded-full bg-slate-900/40">
@@ -173,10 +219,16 @@ export function ProfilePage() {
                 </div>
               </div>
             )}
+
             {isOwnProfile && (
-              <label className="absolute -bottom-1 -right-1 flex size-10 cursor-pointer items-center justify-center rounded-2xl bg-primary text-slate-950 shadow-float transition-all hover:scale-110 active:scale-95">
+              <label className={cn(
+                "absolute -bottom-1 -right-1 flex size-10 cursor-pointer items-center justify-center rounded-2xl shadow-float transition-all hover:scale-110 active:scale-95",
+                isBirthdayToday ? "bg-amber-400 text-amber-900" : "bg-primary text-slate-950"
+              )}>
                 <input type="file" className="hidden" accept="image/*" onChange={handleAvatarChange} disabled={isUploading} />
-                <span className="material-symbols-outlined text-[1.25rem]">photo_camera</span>
+                <span className="material-symbols-outlined text-[1.25rem]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                  {isBirthdayToday ? "redeem" : "photo_camera"}
+                </span>
               </label>
             )}
           </div>
@@ -205,11 +257,14 @@ export function ProfilePage() {
             <div className="grid grid-cols-2 gap-3">
               {INFO_TILES.map((item) => (
                 <Link key={item.key} to={item.href}>
-                  <Card className="space-y-3 p-4 transition-all active:scale-[0.99]">
-                    <div className="flex size-11 items-center justify-center rounded-2xl bg-primary/12">
-                      <span className="material-symbols-outlined text-[1.2rem] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>
-                        {item.icon}
-                      </span>
+                  <Card className="space-y-3 p-4 transition-all hover:border-primary/20 active:scale-[0.98]">
+                    <div className="flex items-start justify-between">
+                      <div className="flex size-11 items-center justify-center rounded-2xl bg-primary/12">
+                        <span className="material-symbols-outlined text-[1.2rem] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>
+                          {item.icon}
+                        </span>
+                      </div>
+                      <span className="material-symbols-outlined text-[1rem] text-text-muted/40">chevron_right</span>
                     </div>
                     <div className="space-y-1">
                       <p className="text-sm font-black text-text">{item.label}</p>

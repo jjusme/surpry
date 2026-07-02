@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
 import { AppShell } from "../../../components/layout/AppShell";
 import { PageHeader } from "../../../components/layout/PageHeader";
 import { Button } from "../../../components/ui/Button";
@@ -15,6 +16,8 @@ import { TextArea } from "../../../components/ui/TextArea";
 import { LoadingState } from "../../../components/feedback/LoadingState";
 import { ErrorState } from "../../../components/feedback/ErrorState";
 import { useAuth } from "../../auth/AuthContext";
+import { NotificationBell } from "../../../components/ui/NotificationBell";
+import { ConfirmDialog } from "../../../components/ui/ConfirmDialog";
 import {
   deletePaymentDestination,
   listPaymentDestinations,
@@ -34,9 +37,11 @@ const schema = z.object({
 });
 
 export function PaymentMethodsPage() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, isSupabaseConfigured } = useAuth();
   const [editing, setEditing] = useState(null);
+  const [confirm, setConfirm] = useState(null);
   const listQuery = useQuery({
     queryKey: ["payment-destinations", user?.id],
     queryFn: () => listPaymentDestinations(user.id),
@@ -130,9 +135,13 @@ export function PaymentMethodsPage() {
   return (
     <AppShell
       activeTab="perfil"
-      header={<PageHeader title="Métodos de reembolso" backTo="/perfil" />}
+      header={<PageHeader action={<NotificationBell />} />}
     >
       <div className="space-y-4 pt-4">
+        <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-sm font-bold text-text-muted active:text-text transition-colors">
+          <span className="material-symbols-outlined text-[1rem]">arrow_back</span>
+          Volver
+        </button>
         <Card className="space-y-4">
           <div>
             <h2 className="text-lg font-bold text-text">
@@ -226,10 +235,10 @@ export function PaymentMethodsPage() {
                   {item.is_default ? <span className="rounded-full bg-primary/15 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-primary-strong">Default</span> : null}
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="secondary" className="flex-1" onClick={() => setEditing(item)}>
+                  <Button type="button" variant="secondary" className="flex-1" onClick={() => setEditing(item)}>
                     Editar
                   </Button>
-                  <Button variant="danger" className="flex-1" onClick={() => deleteMutation.mutate(item.id)}>
+                  <Button type="button" variant="danger" className="flex-1" onClick={() => setConfirm(item.id)}>
                     Eliminar
                   </Button>
                 </div>
@@ -238,6 +247,16 @@ export function PaymentMethodsPage() {
           )}
         </Card>
       </div>
+      <ConfirmDialog
+        isOpen={Boolean(confirm)}
+        title="¿Eliminar método de pago?"
+        description="Se eliminará permanentemente de tu perfil."
+        confirmLabel="Sí, eliminar"
+        cancelLabel="Cancelar"
+        variant="danger"
+        onConfirm={() => { deleteMutation.mutate(confirm); setConfirm(null); }}
+        onCancel={() => setConfirm(null)}
+      />
     </AppShell>
   );
 }

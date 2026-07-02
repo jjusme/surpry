@@ -75,6 +75,7 @@ export function WelcomeWizard({ onComplete }) {
                     </Button>
                     {currentSlide < SLIDES.length - 1 && (
                         <button
+                            type="button"
                             onClick={onComplete}
                             className="w-full py-2 text-sm font-bold text-text-muted/60 active:opacity-50 transition-opacity"
                         >

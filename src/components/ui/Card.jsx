@@ -1,15 +1,16 @@
 ﻿import React from "react";
 import { cn } from "../../utils/cn";
 
-export function Card({ children, className }) {
+export function Card({ children, className, ...rest }) {
   return (
-    <section
+    <div
       className={cn(
         "rounded-3xl border border-border bg-surface p-4 shadow-card",
         className
       )}
+      {...rest}
     >
       {children}
-    </section>
+    </div>
   );
 }
